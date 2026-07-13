@@ -103,7 +103,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
                 <div>
                   <h1>${title}</h1>
                   ${this.config.show_points !== false && points !== undefined
-                    ? html`<p>${points} ${localize("points", this.config.locale, this.hass)}</p>`
+                    ? html`<p data-weekly-points>${points} ${localize("points", this.config.locale, this.hass)}</p>`
                     : nothing}
                 </div>
               </header>
@@ -143,6 +143,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
           (assignment) => html`
             <button
               class="chore ${assignment.completed ? "completed" : ""}"
+              data-entity-id=${assignment.entityId}
               ?disabled=${this.busyEntityId === assignment.entityId}
               @click=${() => this.toggleAssignment(assignment)}
             >
@@ -162,6 +163,30 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     `;
   }
 
+  private updateOptimisticDom(
+    assignment: ChoreAssignment,
+    completed: boolean,
+  ): void {
+    const button = this.renderRoot.querySelector<HTMLButtonElement>(
+      "[data-entity-id=\"" + assignment.entityId + "\"]",
+    );
+    button?.classList.toggle("completed", completed);
+    button
+      ?.querySelector<HTMLElement>(".check")
+      ?.setAttribute("icon", completed ? "mdi:check-circle" : "mdi:circle-outline");
+
+    const points = this.renderRoot.querySelector<HTMLElement>("[data-weekly-points]");
+    if (points && this.hass && this.config && this.config.show_points !== false) {
+      const currentPoints = Number.parseInt(points.textContent ?? "", 10);
+      if (Number.isFinite(currentPoints)) {
+        points.textContent =
+          String(currentPoints + (completed ? assignment.points : -assignment.points)) +
+          " " +
+          localize("points", this.config.locale, this.hass);
+      }
+    }
+  }
+
   private async toggleAssignment(assignment: ChoreAssignment): Promise<void> {
     if (!this.hass) {
       return;
@@ -172,6 +197,8 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
       assignment.entityId,
       completed,
     );
+    this.updateOptimisticDom(assignment, completed);
+    this.requestUpdate();
     this.busyEntityId = assignment.entityId;
     this.error = undefined;
 
