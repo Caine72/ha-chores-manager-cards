@@ -1,3 +1,5 @@
+![Chores Manager Cards](https://img.shields.io/badge/Home%20Assistant-Chores%20Manager%20Cards-1677B8?logo=home-assistant&logoColor=white)
+
 # Chores Manager Cards
 
 Standalone Lovelace cards for the [Chores Manager](https://github.com/Caine72/ha-chores-manager) custom integration.
