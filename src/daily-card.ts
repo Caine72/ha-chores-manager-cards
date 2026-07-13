@@ -1,4 +1,4 @@
-import { css, html, nothing } from "lit";
+import { css, html, nothing, type PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
@@ -13,6 +13,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
 
   @state() private busyEntityId?: string;
   @state() private error?: string;
+  @state() private completionOverrides = new Map<string, boolean>();
 
   static getConfigForm() {
     return {
@@ -63,8 +64,25 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     }
 
     const assignments = getAssignments(this.hass, this.config.child_id);
-    const groups = groupAssignments(assignments);
-    const points = getWeeklyPoints(this.hass, this.config.child_id);
+    const displayedAssignments = assignments.map((assignment) => ({
+      ...assignment,
+      completed:
+        this.completionOverrides.get(assignment.entityId) ?? assignment.completed,
+    }));
+    const groups = groupAssignments(displayedAssignments);
+    const weeklyPoints = getWeeklyPoints(this.hass, this.config.child_id);
+    const points =
+      weeklyPoints === undefined
+        ? undefined
+        : weeklyPoints +
+          assignments.reduce((total, assignment) => {
+            const completed =
+              this.completionOverrides.get(assignment.entityId) ?? assignment.completed;
+            if (completed === assignment.completed) {
+              return total;
+            }
+            return total + (completed ? assignment.points : -assignment.points);
+          }, 0);
     const portrait = getEntityPicture(this.hass, this.config.person_entity);
     const title =
       this.config.title ??
@@ -101,6 +119,22 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     `;
   }
 
+  protected updated(changedProperties: PropertyValues<this>): void {
+    if (!changedProperties.has("hass") || !this.hass || !this.completionOverrides.size) {
+      return;
+    }
+    const overrides = new Map(this.completionOverrides);
+    for (const [entityId, completed] of overrides) {
+      const state = this.hass.states[entityId]?.state;
+      if ((completed && state === "on") || (!completed && state === "off")) {
+        overrides.delete(entityId);
+      }
+    }
+    if (overrides.size !== this.completionOverrides.size) {
+      this.completionOverrides = overrides;
+    }
+  }
+
   private renderGroup(category: string, entries: ChoreAssignment[]) {
     return html`
       <section>
@@ -133,16 +167,24 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
       return;
     }
 
+    const completed = !assignment.completed;
+    this.completionOverrides = new Map(this.completionOverrides).set(
+      assignment.entityId,
+      completed,
+    );
     this.busyEntityId = assignment.entityId;
     this.error = undefined;
 
     try {
       await this.hass.callService(
         "switch",
-        assignment.completed ? "turn_off" : "turn_on",
+        completed ? "turn_on" : "turn_off",
         { entity_id: assignment.entityId },
       );
     } catch (error) {
+      const overrides = new Map(this.completionOverrides);
+      overrides.delete(assignment.entityId);
+      this.completionOverrides = overrides;
       this.error =
         error instanceof Error ? error.message : "Unable to update chore";
     } finally {
