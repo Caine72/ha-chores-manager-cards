@@ -1,3 +1,4 @@
+import "./editor";
 import "./daily-card";
 import "./overview-card";
 

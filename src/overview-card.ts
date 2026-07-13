@@ -5,7 +5,7 @@ import { customElement } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { OVERVIEW_CARD_TYPE } from "./const";
-import { getEntityPicture, getWeeklyPoints } from "./data";
+import { getChildName, getEntityPicture, getWeeklyPoints } from "./data";
 import { localize } from "./localize";
 import type { ActionConfig, OverviewCardConfig, RewardTier } from "./types";
 
@@ -36,6 +36,10 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     };
   }
 
+  static getConfigElement(): HTMLElement {
+    return document.createElement("chores-manager-overview-card-editor");
+  }
+
   static getStubConfig(): OverviewCardConfig {
     return {
       child_id: "kid_1",
@@ -55,7 +59,8 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     if (config.goal_points !== undefined && config.goal_points <= 0) {
       throw new Error("goal_points must be above zero");
     }
-    this.config = { goal_points: 20, locale: "auto", rewards: [], ...config };
+    this.config = { goal_points: 20, locale: "auto", show_points: true, rewards: [], ...config };
+    this.requestUpdate();
   }
 
   getCardSize(): number {
@@ -70,7 +75,8 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     const points = getWeeklyPoints(this.hass, this.config.child_id) ?? 0;
     const goal = this.config.goal_points ?? 20;
     const portrait = getEntityPicture(this.hass, this.config.person_entity);
-    const name = this.config.name ?? this.config.child_id;
+    const name =
+      this.config.name ?? getChildName(this.hass, this.config.child_id) ?? this.config.child_id;
     const progress = Math.min(100, Math.round((points / goal) * 100));
     const nextReward = this.nextReward(points, this.config.rewards ?? []);
 
@@ -82,7 +88,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
             : html`<ha-icon icon="mdi:account-circle"></ha-icon>`}
           <h1>${name}</h1>
         </header>
-        <div class="points-row">
+        <div class="points-row" ?hidden=${this.config.show_points === false}>
           <ha-icon icon="mdi:progress-star"></ha-icon>
           <div>
             <strong>${points} / ${goal} ${localize("points", this.config.locale, this.hass)}</strong>

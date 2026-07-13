@@ -45,6 +45,7 @@ export interface BaseCardConfig {
   name?: string;
   person_entity?: string;
   locale?: "auto" | "en" | "sv";
+  show_points?: boolean;
 }
 
 export interface DailyCardConfig extends BaseCardConfig {

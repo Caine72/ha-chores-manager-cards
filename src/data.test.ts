@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { getAssignments, getWeeklyPoints, groupAssignments } from "./data";
+import {
+  findPersonForChild,
+  getAssignments,
+  getChildren,
+  getWeeklyPoints,
+  groupAssignments,
+} from "./data";
 import type { HomeAssistant } from "./types";
 
 const hass = {
@@ -10,6 +16,7 @@ const hass = {
       attributes: {
         assignment_id: "assignment_2",
         child_id: "kid_1",
+        child_name: "Alex",
         title: "Clear the table",
         category: "Dinner",
         points: 1,
@@ -21,6 +28,7 @@ const hass = {
       attributes: {
         assignment_id: "assignment_1",
         child_id: "kid_1",
+        child_name: "Alex",
         title: "Make the bed",
         category: "Morning",
         points: 2,
@@ -36,7 +44,11 @@ const hass = {
     },
     "sensor.kid_1_weekly_points": {
       state: "3",
-      attributes: { child_id: "kid_1" },
+      attributes: { child_id: "kid_1", child_name: "Alex" },
+    },
+    "person.alex": {
+      state: "home",
+      attributes: { friendly_name: "Alex" },
     },
   },
   callService: async () => undefined,
@@ -50,7 +62,7 @@ describe("Chores Manager state adapter", () => {
     ]);
   });
 
-  it("groups assignments by their backend category", () => {
+  it("groups assignments by the backend category", () => {
     expect([...groupAssignments(getAssignments(hass, "kid_1")).keys()]).toEqual([
       "Dinner",
       "Morning",
@@ -59,5 +71,10 @@ describe("Chores Manager state adapter", () => {
 
   it("reads the weekly-points sensor rather than an assignment switch", () => {
     expect(getWeeklyPoints(hass, "kid_1")).toBe(3);
+  });
+
+  it("discovers child names and infers a matching person", () => {
+    expect(getChildren(hass)).toContainEqual({ id: "kid_1", name: "Alex" });
+    expect(findPersonForChild(hass, "Alex")).toBe("person.alex");
   });
 });

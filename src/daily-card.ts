@@ -3,7 +3,7 @@ import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { DAILY_CARD_TYPE } from "./const";
-import { getAssignments, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
+import { getAssignments, getChildName, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
 import { localize } from "./localize";
 import type { ChoreAssignment, DailyCardConfig } from "./types";
 
@@ -37,6 +37,10 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     };
   }
 
+  static getConfigElement(): HTMLElement {
+    return document.createElement("chores-manager-daily-card-editor");
+  }
+
   static getStubConfig(): DailyCardConfig {
     return { child_id: "kid_1", locale: "auto" };
   }
@@ -45,7 +49,8 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     if (!config?.child_id?.trim()) {
       throw new Error("child_id is required");
     }
-    this.config = { locale: "auto", ...config };
+    this.config = { locale: "auto", show_points: true, ...config };
+    this.requestUpdate();
   }
 
   getCardSize(): number {
@@ -64,6 +69,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     const title =
       this.config.title ??
       this.config.name ??
+      getChildName(this.hass, this.config.child_id) ??
       localize("chores", this.config.locale, this.hass);
 
     return html`
@@ -74,9 +80,9 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
             : html`<ha-icon class="portrait-icon" icon="mdi:account-circle"></ha-icon>`}
           <div>
             <h1>${title}</h1>
-            ${points === undefined
-              ? nothing
-              : html`<p>${points} ${localize("points", this.config.locale, this.hass)}</p>`}
+            ${this.config.show_points !== false && points !== undefined
+              ? html`<p>${points} ${localize("points", this.config.locale, this.hass)}</p>`
+              : nothing}
           </div>
         </header>
         ${this.error ? html`<p class="error" role="alert">${this.error}</p>` : nothing}
@@ -102,7 +108,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
             >
               <ha-icon icon=${assignment.icon}></ha-icon>
               <span class="title">${assignment.title}</span>
-              <span class="points">${assignment.points}p</span>
+              ${this.config?.show_points !== false ? html`<span class="points">${assignment.points}p</span>` : nothing}
               <ha-icon
                 class="check"
                 icon=${assignment.completed
