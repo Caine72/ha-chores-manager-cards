@@ -1,0 +1,36 @@
+name: Release artifact
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: yarn
+      - name: Verify release tag
+        run: node -e "if (!/^v?\\d+\\.\\d+\\.\\d+([-.][0-9A-Za-z.-]+)?$/.test(process.env.GITHUB_REF_NAME)) process.exit(1)"
+      - name: Install and build
+        run: |
+          corepack enable
+          corepack prepare yarn@4.12.0 --activate
+          yarn install --immutable
+          yarn validate
+      - name: Attach distribution bundle
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/ha-chores-manager-cards.js
+          asset_name: ha-chores-manager-cards.js
+          tag: ${{ github.ref }}
+          overwrite: true

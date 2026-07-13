@@ -1,0 +1,47 @@
+{
+  "name": "ha-chores-manager-cards",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Home Assistant Lovelace cards for Chores Manager",
+  "license": "MIT",
+  "packageManager": "yarn@4.12.0",
+  "module": "dist/ha-chores-manager-cards.js",
+  "scripts": {
+    "build": "yarn clean && yarn lint && yarn typecheck && yarn test:run && yarn rollup",
+    "clean": "rm -rf dist coverage",
+    "dev": "rollup -c rollup.config.dev.js --watch",
+    "lint": "eslint src/**/*.ts",
+    "rollup": "rollup -c",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "validate": "yarn lint && yarn typecheck && yarn test:run && yarn rollup"
+  },
+  "dependencies": {
+    "custom-card-helpers": "2.0.0",
+    "lit": "^3.3.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@rollup/plugin-commonjs": "^26.0.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.0",
+    "@types/node": "^24.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.5",
+    "jsdom": "^26.0.0",
+    "prettier": "^3.8.1",
+    "rollup": "^4.20.0",
+    "rollup-plugin-serve": "^1.1.1",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.0.0"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Chores Manager Cards",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-24-bookworm",
+  "postCreateCommand": "corepack enable && corepack prepare yarn@4.12.0 --activate && yarn install --immutable",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}
