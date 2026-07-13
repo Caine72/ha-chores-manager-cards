@@ -13,11 +13,10 @@ jobs:
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
-          cache: yarn
       - name: Verify release tag
         run: node -e "if (!/^v?\\d+\\.\\d+\\.\\d+([-.][0-9A-Za-z.-]+)?$/.test(process.env.GITHUB_REF_NAME)) process.exit(1)"
       - name: Install and build
