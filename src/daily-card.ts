@@ -49,7 +49,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     if (!config?.child_id?.trim()) {
       throw new Error("child_id is required");
     }
-    this.config = { locale: "auto", show_points: true, ...config };
+    this.config = { locale: "auto", show_header: true, show_person: true, show_points: true, ...config };
     this.requestUpdate();
   }
 
@@ -74,17 +74,23 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
 
     return html`
       <ha-card>
-        <header>
-          ${portrait
-            ? html`<img class="portrait" src=${portrait} alt="" />`
-            : html`<ha-icon class="portrait-icon" icon="mdi:account-circle"></ha-icon>`}
-          <div>
-            <h1>${title}</h1>
-            ${this.config.show_points !== false && points !== undefined
-              ? html`<p>${points} ${localize("points", this.config.locale, this.hass)}</p>`
-              : nothing}
-          </div>
-        </header>
+        ${this.config.show_header !== false
+          ? html`
+              <header>
+                ${this.config.show_person !== false
+                  ? portrait
+                    ? html`<img class="portrait" src=${portrait} alt="" />`
+                    : html`<ha-icon class="portrait-icon" icon="mdi:account-circle"></ha-icon>`
+                  : nothing}
+                <div>
+                  <h1>${title}</h1>
+                  ${this.config.show_points !== false && points !== undefined
+                    ? html`<p>${points} ${localize("points", this.config.locale, this.hass)}</p>`
+                    : nothing}
+                </div>
+              </header>
+            `
+          : nothing}
         ${this.error ? html`<p class="error" role="alert">${this.error}</p>` : nothing}
         ${groups.size === 0
           ? html`<p class="empty">${localize("no_chores", this.config.locale, this.hass)}</p>`

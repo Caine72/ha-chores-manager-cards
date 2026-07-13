@@ -23,6 +23,9 @@ type: custom:chores-manager-daily-card
 child_id: kid_1
 name: Alex
 person_entity: person.alex
+show_header: true
+show_person: true
+show_points: true
 locale: auto
 ```
 
@@ -35,7 +38,11 @@ type: custom:chores-manager-overview-card
 child_id: kid_1
 name: Alex
 person_entity: person.alex
-goal_points: 20
+show_name: true
+show_person: true
+person_position: left
+person_size: medium
+show_points: true
 rewards:
   - points: 20
     label: Friday candy
@@ -45,6 +52,8 @@ daily_action:
   action: navigate
   navigation_path: /dashboard-chores/daily
 ```
+
+Reward levels define the progress targets. The card progresses toward the next unmet reward level; `goal_points` remains a compatibility fallback for older YAML and is not shown in the visual editor.
 
 `history_action` and `correction_action` accept the same standard Home Assistant action format. They are optional, so the overview is not coupled to any popup implementation.
 

@@ -59,7 +59,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     if (config.goal_points !== undefined && config.goal_points <= 0) {
       throw new Error("goal_points must be above zero");
     }
-    this.config = { goal_points: 20, locale: "auto", show_points: true, rewards: [], ...config };
+    this.config = { locale: "auto", person_position: "left", person_size: "medium", show_name: true, show_person: true, show_points: true, rewards: [], ...config };
     this.requestUpdate();
   }
 
@@ -73,21 +73,33 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     }
 
     const points = getWeeklyPoints(this.hass, this.config.child_id) ?? 0;
-    const goal = this.config.goal_points ?? 20;
+    const rewards = [...(this.config.rewards ?? [])].sort(
+      (left, right) => left.points - right.points,
+    );
+    const nextReward = this.nextReward(points, rewards);
+    const goal =
+      nextReward?.points ?? rewards.at(-1)?.points ?? this.config.goal_points ?? 20;
     const portrait = getEntityPicture(this.hass, this.config.person_entity);
     const name =
       this.config.name ?? getChildName(this.hass, this.config.child_id) ?? this.config.child_id;
+    const position = this.config.person_position ?? "left";
+    const size = this.config.person_size ?? "medium";
     const progress = Math.min(100, Math.round((points / goal) * 100));
-    const nextReward = this.nextReward(points, this.config.rewards ?? []);
 
     return html`
       <ha-card>
-        <header>
-          ${portrait
-            ? html`<img src=${portrait} alt="" />`
-            : html`<ha-icon icon="mdi:account-circle"></ha-icon>`}
-          <h1>${name}</h1>
-        </header>
+        ${this.config.show_person !== false || this.config.show_name !== false
+          ? html`
+              <header class="position-${position}">
+                ${this.config.show_person !== false
+                  ? portrait
+                    ? html`<img class="portrait size-${size}" src=${portrait} alt="" />`
+                    : html`<ha-icon class="portrait-icon size-${size}" icon="mdi:account-circle"></ha-icon>`
+                  : nothing}
+                ${this.config.show_name !== false ? html`<h1>${name}</h1>` : nothing}
+              </header>
+            `
+          : nothing}
         <div class="points-row" ?hidden=${this.config.show_points === false}>
           <ha-icon icon="mdi:progress-star"></ha-icon>
           <div>
@@ -147,8 +159,16 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     :host { display: block; }
     ha-card { padding: 20px; }
     header { display: flex; align-items: center; gap: 12px; }
-    header img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
-    header ha-icon { --mdc-icon-size: 64px; color: var(--state-icon-color); }
+    header.position-center { flex-direction: column; text-align: center; }
+    header.position-right { flex-direction: row-reverse; text-align: right; }
+    .portrait { border-radius: 50%; object-fit: cover; }
+    .portrait-icon { color: var(--state-icon-color); }
+    .size-small { width: 40px; height: 40px; }
+    .size-medium { width: 64px; height: 64px; }
+    .size-large { width: 96px; height: 96px; }
+    ha-icon.size-small { --mdc-icon-size: 40px; }
+    ha-icon.size-medium { --mdc-icon-size: 64px; }
+    ha-icon.size-large { --mdc-icon-size: 96px; }
     h1 { margin: 0; font-size: 20px; font-weight: 600; }
     .points-row { display: flex; gap: 12px; align-items: center; margin: 18px 0 12px; }
     .points-row > ha-icon { color: var(--state-icon-color); }

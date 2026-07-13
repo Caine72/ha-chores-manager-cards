@@ -6,6 +6,9 @@ export interface HassEntity {
 export interface HomeAssistant {
   states: Record<string, HassEntity>;
   language?: string;
+  connection?: {
+    sendMessagePromise: <T>(message: Record<string, unknown>) => Promise<T>;
+  };
   callService: (
     domain: string,
     service: string,
@@ -46,6 +49,8 @@ export interface BaseCardConfig {
   person_entity?: string;
   locale?: "auto" | "en" | "sv";
   show_points?: boolean;
+  show_header?: boolean;
+  show_person?: boolean;
 }
 
 export interface DailyCardConfig extends BaseCardConfig {
@@ -53,6 +58,9 @@ export interface DailyCardConfig extends BaseCardConfig {
 }
 
 export interface OverviewCardConfig extends BaseCardConfig {
+  show_name?: boolean;
+  person_position?: "left" | "center" | "right";
+  person_size?: "small" | "medium" | "large";
   goal_points?: number;
   rewards?: RewardTier[];
   daily_action?: ActionConfig;
