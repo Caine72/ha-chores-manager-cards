@@ -75,6 +75,10 @@ The visual editor provides a child-name dropdown and a separate Chores Manager w
 
 `buttons` supports up to three configurable buttons. Each button always shows a native multi-select populated with active Home Assistant users, alongside its actions and visibility mode. User selection requires an administrator account, as required by Home Assistant’s user-list API. Legacy `daily_action`, `history_action`, and `correction_action` remain supported for existing dashboards.
 
+## Continuous integration
+
+Pull requests must pass linting, TypeScript validation, unit tests, a production build, dependency deduplication, generated-bundle freshness, HACS validation, and the npm-lockfile guard.
+
 ## Development
 
 Use the supplied dev container or Node 24 with Yarn 4.
