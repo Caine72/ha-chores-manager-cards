@@ -1,294 +1,414 @@
-import type { ChoreChild } from "./data";
+import { css, html, LitElement, nothing, type PropertyValues } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
 
-import {
-  findPersonForChild,
-  getChildren,
-  getPersonOptions,
-} from "./data";
+import { getChildren } from "./data";
 import type {
+  ButtonVisibilityMode,
   DailyCardConfig,
   HomeAssistant,
+  OverviewButton,
   OverviewCardConfig,
-  RewardTier,
 } from "./types";
 
 type EditorConfig = (DailyCardConfig | OverviewCardConfig) & { type?: string };
 type EditorKind = "daily" | "overview";
-
-interface InventoryResponse {
-  children: Array<{ child_id: string; name: string; active: boolean }>;
+type FormValueChangedEvent<T> = CustomEvent<{ value: T }>;
+interface UserOption {
+  id: string;
+  name: string;
+  is_active: boolean;
+  system_generated: boolean;
 }
 
-abstract class ChoresManagerCardEditor extends HTMLElement {
-  private config?: EditorConfig;
-  private hassValue?: HomeAssistant;
-  private inventoryChildren?: ChoreChild[];
-  private inventoryConnection?: HomeAssistant["connection"];
+type EditorButton = Omit<OverviewButton, "visibility"> & {
+  visibility_mode?: ButtonVisibilityMode;
+  visibility_users?: string[];
+};
+
+const WEEKLY_POINTS_SELECTOR = {
+  entity: { filter: [{ domain: "sensor", integration: "chores_manager" }] },
+};
+
+const ACTION_SELECTOR = {
+  ui_action: {
+    actions: [
+      "more-info",
+      "navigate",
+      "url",
+      "toggle",
+      "perform-action",
+      "call-service",
+      "assist",
+      "none",
+    ],
+    default_action: "none",
+  },
+};
+
+const BUTTON_PRESETS: OverviewButton[] = [
+  { label: "Chores", icon: "mdi:format-list-checks", color: "#00bcd4" },
+  { label: "History", icon: "mdi:trophy-outline", color: "#ffc107" },
+  { label: "Correction", icon: "mdi:wrench-cog", color: "#9c27b0" },
+];
+
+function toEditorButton(button: OverviewButton): EditorButton {
+  const { visibility, ...fields } = button;
+  return {
+    ...fields,
+    visibility_mode: visibility?.mode ?? "all",
+    visibility_users: visibility?.users ?? [],
+  };
+}
+
+function fromEditorButton(button: EditorButton): OverviewButton {
+  const { visibility_mode, visibility_users, ...fields } = button;
+  return {
+    ...fields,
+    visibility: {
+      mode: visibility_mode ?? "all",
+      users: visibility_users ?? [],
+    },
+  };
+}
+
+function legacyButtons(config: OverviewCardConfig): OverviewButton[] {
+  const actions = [config.daily_action, config.history_action, config.correction_action];
+  return BUTTON_PRESETS.flatMap((preset, index) => {
+    const tapAction = actions[index];
+    return tapAction && tapAction.action !== "none"
+      ? [{ ...preset, tap_action: tapAction }]
+      : [];
+  });
+}
+
+function defaults(config: EditorConfig, kind: EditorKind): EditorConfig {
+  const base = {
+    locale: "auto" as const,
+    show_header: true,
+    show_name: true,
+    show_person: true,
+    show_points: true,
+    person_position: "left" as const,
+    person_size: "medium" as const,
+  };
+  if (kind === "overview" && (config as OverviewCardConfig).buttons === undefined) {
+    const overview = config as OverviewCardConfig;
+    return {
+      ...base,
+      ...config,
+      buttons: legacyButtons(overview).length ? legacyButtons(overview) : BUTTON_PRESETS,
+    };
+  }
+  return { ...base, ...config };
+}
+
+abstract class ChoresManagerCardEditor extends LitElement {
+  @property({ attribute: false }) hass?: HomeAssistant;
+
+  @state() private config?: EditorConfig;
+  @state() private users: UserOption[] = [];
+  private usersConnection?: HomeAssistant["connection"];
 
   protected abstract readonly kind: EditorKind;
 
-  set hass(hass: HomeAssistant | undefined) {
-    this.hassValue = hass;
-    this.loadInventory();
-    this.applyInferredDefaults();
-    this.render();
-  }
-
   setConfig(config: EditorConfig): void {
-    this.config = {
-      locale: "auto",
-      person_position: "left",
-      person_size: "medium",
-      show_header: true,
-      show_name: true,
-      show_person: true,
-      show_points: true,
-      ...config,
-    };
-    this.applyInferredDefaults();
-    this.render();
+    this.config = defaults(config, this.kind);
+  }
+  protected willUpdate(changedProperties: PropertyValues<this>): void {
+    if (changedProperties.has("hass")) {
+      this.loadUsers();
+    }
   }
 
-  private loadInventory(): void {
-    const connection = this.hassValue?.connection;
-    if (!connection || connection === this.inventoryConnection) {
+  private loadUsers(): void {
+    const connection = this.hass?.connection;
+    if (!connection || connection === this.usersConnection) {
       return;
     }
-
-    this.inventoryConnection = connection;
+    this.usersConnection = connection;
     void connection
-      .sendMessagePromise<InventoryResponse>({ type: "chores_manager/inventory" })
-      .then((inventory) => {
-        this.inventoryChildren = inventory.children
-          .filter((child) => child.active)
-          .map((child) => ({ id: child.child_id, name: child.name }))
+      .sendMessagePromise<UserOption[]>({ type: "config/auth/list" })
+      .then((users) => {
+        this.users = users
+          .filter((user) => user.is_active && !user.system_generated)
           .sort((left, right) => left.name.localeCompare(right.name));
-        this.applyInferredDefaults();
-        this.render();
       })
       .catch(() => {
-        this.inventoryChildren = undefined;
-        this.render();
+        this.users = [];
       });
   }
 
-  private childOptions(): ChoreChild[] {
-    return this.inventoryChildren ?? (this.hassValue ? getChildren(this.hassValue) : []);
-  }
-
-  private applyInferredDefaults(): void {
-    if (!this.config || !this.hassValue) {
-      return;
-    }
-
-    const child = this.childOptions().find((item) => item.id === this.config?.child_id);
-    if (!child) {
-      return;
-    }
-
-    const personEntity =
-      this.config.person_entity ?? findPersonForChild(this.hassValue, child.name);
-    if (this.config.name !== undefined && this.config.person_entity === personEntity) {
-      return;
-    }
-
-    this.config = {
-      ...this.config,
-      name: this.config.name ?? child.name,
-      person_entity: personEntity,
-    };
-    this.emitConfigChanged();
-  }
-
-  private render(): void {
+  protected render() {
     if (!this.config) {
-      return;
+      return nothing;
     }
 
-    const config = this.config;
-    const children = this.childOptions();
-    const people = this.hassValue ? getPersonOptions(this.hassValue) : [];
-    const childName = children.find((child) => child.id === config.child_id)?.name;
-    const rewards =
-      this.kind === "overview" ? (config as OverviewCardConfig).rewards ?? [] : [];
-
-    this.innerHTML = [
-      "<style>",
-      ":host{display:block}.editor{display:grid;gap:16px}label,.rewards{display:grid;gap:6px}",
-      "span{color:var(--secondary-text-color);font-size:14px}input,select{box-sizing:border-box;width:100%;min-height:40px;padding:0 10px;border:1px solid var(--divider-color);border-radius:4px;background:var(--card-background-color);color:var(--primary-text-color);font:inherit}",
-      ".toggle{display:flex;align-items:center;gap:10px}.toggle input{width:auto;min-height:0}.reward{display:grid;grid-template-columns:minmax(72px,.35fr) minmax(0,1fr) 40px;gap:8px;align-items:center}",
-      ".icon-button{width:40px;height:40px;border:1px solid var(--divider-color);border-radius:50%;background:transparent;color:var(--primary-text-color);font-size:24px;line-height:1;cursor:pointer}.icon-button:hover{background:var(--secondary-background-color)}",
-      "</style><div class='editor'>",
-      this.select(
-        "child_id",
-        this.label("child"),
-        children.map((child) => [child.id, child.name]),
-        config.child_id,
-      ),
-      this.input("name", this.label("name"), config.name ?? childName ?? ""),
-      this.select(
-        "person_entity",
-        this.label("person"),
-        [["", this.label("none")], ...people.map((person) => [person.entityId, person.name])],
-        config.person_entity ?? "",
-      ),
-      this.select(
-        "locale",
-        this.label("locale"),
-        [["auto", this.label("automatic")], ["sv", "Svenska"], ["en", "English"]],
-        config.locale ?? "auto",
-      ),
-      this.toggle("show_points", this.label("show_points"), config.show_points !== false),
-      this.kind === "daily"
-        ? [
-            this.toggle("show_header", this.label("show_header"), config.show_header !== false),
-            this.toggle("show_person", this.label("show_person"), config.show_person !== false),
-          ].join("")
-        : [
-            this.toggle("show_name", this.label("show_name"), (config as OverviewCardConfig).show_name !== false),
-            this.toggle("show_person", this.label("show_person"), config.show_person !== false),
-            this.select(
-              "person_position",
-              this.label("person_position"),
-              [["left", this.label("left")], ["center", this.label("center")], ["right", this.label("right")]],
-              (config as OverviewCardConfig).person_position ?? "left",
-            ),
-            this.select(
-              "person_size",
-              this.label("person_size"),
-              [["small", this.label("small")], ["medium", this.label("medium")], ["large", this.label("large")]],
-              (config as OverviewCardConfig).person_size ?? "medium",
-            ),
-            "<div class='rewards'><span>", this.label("rewards"), "</span>",
-            ...rewards.map((reward, index) => this.rewardRow(reward, index)),
-            "<button class='icon-button' data-action='add-reward' title='",
-            this.escape(this.label("add_reward")),
-            "' aria-label='", this.escape(this.label("add_reward")), "'>+</button></div>",
-          ].join(""),
-      "</div>",
-    ].join("");
-
-    this.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-field]").forEach(
-      (element) => element.addEventListener("change", this.onFieldChanged),
-    );
-    this.querySelectorAll<HTMLInputElement>("[data-reward]").forEach(
-      (element) => element.addEventListener("change", this.onRewardChanged),
-    );
-    this.querySelectorAll<HTMLElement>("[data-action]").forEach(
-      (element) => element.addEventListener("click", this.onAction),
-    );
+    return html`
+      <ha-form
+        .hass=${this.hass}
+        .data=${this.formData()}
+        .schema=${this.schema()}
+        .computeLabel=${this.computeLabel}
+        @value-changed=${this.onFormValueChanged}
+      ></ha-form>
+      ${this.kind === "overview" ? this.renderButtonEditors() : nothing}
+    `;
   }
 
-  private toggle(field: string, label: string, checked: boolean): string {
+  private formData(): EditorConfig {
+    if (!this.hass || !this.config) {
+      return this.config ?? {};
+    }
+    const childId = this.config.child_id ?? (this.config.child_entity
+      ? this.hass.states[this.config.child_entity]?.attributes.child_id
+      : undefined);
+    return typeof childId === "string"
+      ? {
+          ...this.config,
+          child_id: childId,
+          weekly_points_entity:
+            this.config.weekly_points_entity ?? this.matchingWeeklyPointsEntity(childId),
+        }
+      : this.config;
+  }
+
+  private schema() {
+    const children = this.hass ? getChildren(this.hass) : [];
+    const shared = [
+      {
+        name: "child_id",
+        required: true,
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: children.map((child) => ({ label: child.name, value: child.id })),
+          },
+        },
+      },
+      { name: "weekly_points_entity", selector: WEEKLY_POINTS_SELECTOR },
+      { name: "name", selector: { text: {} } },
+      { name: "person_entity", selector: { entity: { filter: [{ domain: "person" }] } } },
+      {
+        name: "locale",
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: [
+              { label: "Automatic", value: "auto" },
+              { label: "English", value: "en" },
+              { label: "Svenska", value: "sv" },
+            ],
+          },
+        },
+      },
+    ];
+
+    if (this.kind === "daily") {
+      return [
+        ...shared,
+        {
+          type: "grid",
+          name: "display",
+          flatten: true,
+          schema: [
+            { name: "show_header", selector: { boolean: {} } },
+            { name: "show_person", selector: { boolean: {} } },
+            { name: "show_points", selector: { boolean: {} } },
+          ],
+        },
+      ];
+    }
+
     return [
-      "<label class='toggle'><input data-field='", field, "' type='checkbox'",
-      checked ? " checked" : "",
-      "><span>", this.escape(label), "</span></label>",
-    ].join("");
+      ...shared,
+      {
+        type: "grid",
+        name: "display",
+        flatten: true,
+        schema: [
+          { name: "show_name", selector: { boolean: {} } },
+          { name: "show_person", selector: { boolean: {} } },
+          { name: "show_points", selector: { boolean: {} } },
+          {
+            name: "person_position",
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { label: "Left", value: "left" },
+                  { label: "Center", value: "center" },
+                  { label: "Right", value: "right" },
+                ],
+              },
+            },
+          },
+          {
+            name: "person_size",
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: [
+                  { label: "Small", value: "small" },
+                  { label: "Medium", value: "medium" },
+                  { label: "Large", value: "large" },
+                ],
+              },
+            },
+          },
+          { name: "goal_points", selector: { number: { min: 1, mode: "box" } } },
+          { name: "progress_color", selector: { text: { type: "color" } } },
+        ],
+      },
+      {
+        name: "rewards",
+        selector: {
+          object: {
+            multiple: true,
+            label_field: "label",
+            fields: {
+              points: { required: true, selector: { number: { min: 1, mode: "box" } } },
+              label: { required: true, selector: { text: {} } },
+              description: { selector: { text: {} } },
+              color: { selector: { text: { type: "color" } } },
+            },
+          },
+        },
+      },
+    ];
   }
 
-  private select(
-    field: string,
-    label: string,
-    options: string[][],
-    value: string,
-  ): string {
-    const selectedOptions = options.length ? options : [[value, value]];
-    return [
-      "<label><span>", this.escape(label), "</span><select data-field='", field, "'>",
-      ...selectedOptions.map(([optionValue, optionLabel]) => [
-        "<option value='", this.escape(optionValue), "'",
-        optionValue === value ? " selected" : "",
-        ">", this.escape(optionLabel), "</option>",
-      ].join("")),
-      "</select></label>",
-    ].join("");
+  private renderButtonEditors() {
+    const buttons = (this.config as OverviewCardConfig).buttons ?? [];
+    return html`
+      <section class="button-editors">
+        <h2>${this.label("buttons")}</h2>
+        ${buttons.map(
+          (button, index) => html`
+            <section class="button-editor">
+              <div class="button-editor-heading">
+                <h3>${button.label || `${this.label("button")} ${index + 1}`}</h3>
+                <ha-icon-button
+                  .label=${this.label("remove_button")}
+                  title=${this.label("remove_button")}
+                  path="M19,13H5V11H19V13Z"
+                  @click=${() => this.removeButton(index)}
+                ></ha-icon-button>
+              </div>
+              <ha-form
+                .hass=${this.hass}
+                .data=${toEditorButton(button)}
+                .schema=${this.buttonSchema(toEditorButton(button))}
+                .computeLabel=${this.computeLabel}
+                @value-changed=${(event: FormValueChangedEvent<EditorButton>) =>
+                  this.onButtonValueChanged(index, event)}
+              ></ha-form>
+            </section>
+          `,
+        )}
+        ${buttons.length < 3
+          ? html`
+              <button class="add-button" @click=${this.addButton}>
+                <ha-icon icon="mdi:plus"></ha-icon>${this.label("add_button")}
+              </button>
+            `
+          : nothing}
+      </section>
+    `;
   }
 
-  private input(field: string, label: string, value: string): string {
-    return [
-      "<label><span>", this.escape(label), "</span><input data-field='", field,
-      "' value='", this.escape(value), "'></label>",
-    ].join("");
-  }
-
-  private rewardRow(reward: RewardTier, index: number): string {
-    return [
-      "<div class='reward'><input data-reward='points' data-index='", String(index),
-      "' aria-label='", this.escape(this.label("points")), "' type='number' min='1' value='",
-      String(reward.points), "'><input data-reward='label' data-index='", String(index),
-      "' aria-label='", this.escape(this.label("reward")), "' value='",
-      this.escape(reward.label), "'><button class='icon-button' data-action='remove-reward' data-index='",
-      String(index), "' title='", this.escape(this.label("remove")), "' aria-label='",
-      this.escape(this.label("remove")), "'>−</button></div>",
-    ].join("");
-  }
-
-  private onFieldChanged = (event: Event): void => {
-    const element = event.currentTarget as HTMLInputElement | HTMLSelectElement;
-    const field = element.dataset.field;
-    if (!field) {
-      return;
+  private buttonSchema(button: EditorButton) {
+    const fields: Array<Record<string, unknown>> = [
+      { name: "label", required: true, selector: { text: {} } },
+      { name: "icon", required: true, selector: { icon: {} } },
+      { name: "color", required: true, selector: { text: { type: "color" } } },
+      { name: "tap_action", selector: ACTION_SELECTOR },
+      { name: "hold_action", selector: ACTION_SELECTOR },
+      { name: "double_tap_action", selector: ACTION_SELECTOR },
+      {
+        name: "visibility_mode",
+        selector: {
+          select: {
+            mode: "dropdown",
+            options: [
+              { label: "All users", value: "all" },
+              { label: "Administrators", value: "administrators" },
+              { label: "Allow selected users", value: "allow-list" },
+              { label: "Hide from selected users", value: "deny-list" },
+            ],
+          },
+        },
+      },
+    ];
+    const users = new Map(this.users.map((user) => [user.id, user.name]));
+    for (const userId of button.visibility_users ?? []) {
+      users.set(userId, users.get(userId) ?? userId);
     }
-    if (field === "child_id") {
-      this.changeChild(element.value);
-      return;
-    }
-    if (field.startsWith("show_")) {
-      this.update({ [field]: (element as HTMLInputElement).checked });
-      return;
-    }
-    this.update({ [field]: element.value || undefined });
-  };
-
-  private onRewardChanged = (event: Event): void => {
-    const element = event.currentTarget as HTMLInputElement;
-    const field = element.dataset.reward;
-    const index = Number(element.dataset.index);
-    const rewards = [...((this.config as OverviewCardConfig).rewards ?? [])];
-    const reward = { ...rewards[index] };
-    if (field === "points") {
-      const points = Number(element.value);
-      if (!Number.isFinite(points) || points <= 0) {
-        return;
-      }
-      reward.points = points;
-    } else {
-      reward.label = element.value;
-    }
-    rewards[index] = reward;
-    this.update({ rewards });
-  };
-
-  private onAction = (event: Event): void => {
-    const element = event.currentTarget as HTMLElement;
-    const rewards = [...((this.config as OverviewCardConfig).rewards ?? [])];
-    if (element.dataset.action === "add-reward") {
-      rewards.push({ points: (rewards.at(-1)?.points ?? 0) + 10, label: "" });
-    } else if (element.dataset.action === "remove-reward") {
-      rewards.splice(Number(element.dataset.index), 1);
-    }
-    this.update({ rewards });
-  };
-
-  private changeChild(childId: string): void {
-    const child = this.childOptions().find((item) => item.id === childId);
-    const suggestedPerson =
-      this.hassValue && child ? findPersonForChild(this.hassValue, child.name) : undefined;
-    this.update({
-      child_id: childId,
-      name: child?.name,
-      person_entity: suggestedPerson ?? this.config?.person_entity,
+    fields.push({
+      name: "visibility_users",
+      selector: {
+        select: {
+          multiple: true,
+          mode: "dropdown",
+          options: [...users].map(([value, label]) => ({ value, label })),
+        },
+      },
     });
+    return fields;
   }
 
-  private update(update: Partial<EditorConfig>): void {
-    if (!this.config) {
+  private onFormValueChanged(event: FormValueChangedEvent<EditorConfig>): void {
+    event.stopPropagation();
+    const value = event.detail.value;
+    const changedChild = value.child_id !== this.config?.child_id;
+    this.config = defaults(
+      {
+        ...this.config,
+        ...value,
+        weekly_points_entity:
+          changedChild && this.hass
+            ? this.matchingWeeklyPointsEntity(value.child_id)
+            : value.weekly_points_entity,
+      },
+      this.kind,
+    );
+    this.emitConfigChanged();
+  }
+
+  private onButtonValueChanged(
+    index: number,
+    event: FormValueChangedEvent<EditorButton>,
+  ): void {
+    event.stopPropagation();
+    const overview = this.config as OverviewCardConfig;
+    const buttons = [...(overview.buttons ?? [])];
+    const existing = toEditorButton(buttons[index]);
+    buttons[index] = fromEditorButton({
+      ...existing,
+      ...event.detail.value,
+      visibility_users:
+        event.detail.value.visibility_users ?? existing.visibility_users,
+    });
+    this.config = { ...overview, buttons };
+    this.emitConfigChanged();
+  }
+
+  private addButton = (): void => {
+    const overview = this.config as OverviewCardConfig;
+    const buttons = [...(overview.buttons ?? [])];
+    const preset = BUTTON_PRESETS[buttons.length];
+    if (!preset) {
       return;
     }
-    this.config = { ...this.config, ...update } as EditorConfig;
+    this.config = { ...overview, buttons: [...buttons, preset] };
     this.emitConfigChanged();
-    this.render();
+  };
+
+  private removeButton(index: number): void {
+    const overview = this.config as OverviewCardConfig;
+    const buttons = [...(overview.buttons ?? [])];
+    buttons.splice(index, 1);
+    this.config = { ...overview, buttons };
+    this.emitConfigChanged();
   }
 
   private emitConfigChanged(): void {
@@ -301,43 +421,74 @@ abstract class ChoresManagerCardEditor extends HTMLElement {
     );
   }
 
+  private matchingWeeklyPointsEntity(childId: string | undefined): string | undefined {
+    if (!childId || !this.hass) {
+      return undefined;
+    }
+    return Object.entries(this.hass.states).find(
+      ([entityId, entity]) =>
+        entityId.startsWith("sensor.") &&
+        entity.attributes.child_id === childId,
+    )?.[0];
+  }
+
+  private computeLabel = (schema: { name: string }): string | undefined =>
+    this.label(schema.name);
+
   private label(key: string): string {
-    const labels = this.hassValue?.language?.toLowerCase().startsWith("sv")
+    const labels = this.hass?.language?.toLowerCase().startsWith("sv")
       ? {
-          add_reward: "Lägg till belöning", automatic: "Automatiskt", center: "Centrerad",
-          child: "Barn", left: "Vänster", locale: "Språk", medium: "Mellan",
-          name: "Visningsnamn", none: "Ingen", person: "Person", person_position: "Bildposition",
-          person_size: "Bildstorlek", points: "Poäng", remove: "Ta bort", reward: "Belöning",
-          rewards: "Belöningsnivåer", right: "Höger", show_header: "Visa sidhuvud",
-          show_name: "Visa namn", show_person: "Visa bild", show_points: "Visa poäng",
-          small: "Liten", large: "Stor",
+          add_button: "Lägg till knapp", button: "Knapp", buttons: "Knappar",
+          child_id: "Barn", color: "Färg", description: "Beskrivning",
+          double_tap_action: "Dubbeltryck", goal_points: "Reservmålpoäng",
+          hold_action: "Håll inne", icon: "Ikon", label: "Etikett", locale: "Språk",
+          name: "Visningsnamn", person_entity: "Person", person_position: "Bildposition",
+          person_size: "Bildstorlek", points: "Poäng", progress_color: "Förloppsfärg",
+          remove_button: "Ta bort knapp", rewards: "Belöningsnivåer",
+          show_header: "Visa sidhuvud", show_name: "Visa namn", show_person: "Visa bild",
+          show_points: this.kind === "daily" ? "Visa poäng" : "Visa poäng och belöningsmeddelande",
+          tap_action: "Tryck", visibility_mode: "Synlig för", visibility_users: "Användare",
+          weekly_points_entity: "Veckopoäng",
         }
       : {
-          add_reward: "Add reward", automatic: "Automatic", center: "Center",
-          child: "Child", left: "Left", locale: "Language", medium: "Medium",
-          name: "Display name", none: "None", person: "Person", person_position: "Picture position",
-          person_size: "Picture size", points: "Points", remove: "Remove", reward: "Reward",
-          rewards: "Reward levels", right: "Right", show_header: "Show header",
-          show_name: "Show name", show_person: "Show picture", show_points: "Show points",
-          small: "Small", large: "Large",
+          add_button: "Add button", button: "Button", buttons: "Buttons",
+          child_id: "Child", color: "Color", description: "Description",
+          double_tap_action: "Double-tap behavior", goal_points: "Fallback goal points",
+          hold_action: "Hold behavior", icon: "Icon", label: "Label", locale: "Language",
+          name: "Display name", person_entity: "Person", person_position: "Picture position",
+          person_size: "Picture size", points: "Points", progress_color: "Progress color",
+          remove_button: "Remove button", rewards: "Reward levels",
+          show_header: "Show header", show_name: "Show name", show_person: "Show picture",
+          show_points: this.kind === "daily" ? "Show points" : "Show points and reward message",
+          tap_action: "Tap behavior", visibility_mode: "Visible to", visibility_users: "Users",
+          weekly_points_entity: "Weekly points",
         };
     return labels[key as keyof typeof labels];
   }
 
-  private escape(value: string): string {
-    return value.replace(/[&<>"']/g, (character) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-    })[character] ?? character);
-  }
+  static styles = css`
+    :host { display: block; }
+    .button-editors { display: grid; gap: 12px; margin-top: 24px; }
+    .button-editors h2, .button-editor h3 { margin: 0; font-size: 16px; }
+    .button-editor { border: 1px solid var(--divider-color); border-radius: 8px; padding: 12px; }
+    .button-editor-heading { align-items: center; display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .add-button { align-items: center; background: transparent; border: 1px solid var(--divider-color); border-radius: 8px; color: var(--primary-text-color); cursor: pointer; display: inline-flex; font: inherit; gap: 8px; justify-content: center; min-height: 40px; padding: 0 12px; }
+  `;
 }
 
+@customElement("chores-manager-daily-card-editor")
 export class ChoresManagerDailyCardEditor extends ChoresManagerCardEditor {
   protected readonly kind = "daily";
 }
 
+@customElement("chores-manager-overview-card-editor")
 export class ChoresManagerOverviewCardEditor extends ChoresManagerCardEditor {
   protected readonly kind = "overview";
 }
 
-customElements.define("chores-manager-daily-card-editor", ChoresManagerDailyCardEditor);
-customElements.define("chores-manager-overview-card-editor", ChoresManagerOverviewCardEditor);
+declare global {
+  interface HTMLElementTagNameMap {
+    "chores-manager-daily-card-editor": ChoresManagerDailyCardEditor;
+    "chores-manager-overview-card-editor": ChoresManagerOverviewCardEditor;
+  }
+}

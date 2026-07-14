@@ -1,5 +1,5 @@
 import { UNKNOWN_STATES } from "./const";
-import type { ChoreAssignment, HassEntity, HomeAssistant } from "./types";
+import type { BaseCardConfig, ChoreAssignment, HassEntity, HomeAssistant } from "./types";
 
 export interface ChoreChild {
   id: string;
@@ -32,7 +32,9 @@ export function getChildren(hass: HomeAssistant): ChoreChild[] {
     if (!childId) {
       continue;
     }
-    const childName = attribute<string>(entity, "child_name");
+    const childName =
+      attribute<string>(entity, "kid_name") ??
+      attribute<string>(entity, "child_name");
     if (childName?.trim()) {
       children.set(childId, childName);
     } else if (!children.has(childId)) {
@@ -43,6 +45,16 @@ export function getChildren(hass: HomeAssistant): ChoreChild[] {
   return [...children.entries()]
     .map(([id, name]) => ({ id, name }))
     .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+export function getConfiguredChildId(
+  hass: HomeAssistant,
+  config: Pick<BaseCardConfig, "child_id" | "child_entity">,
+): string | undefined {
+  const selectedEntity = config.child_entity
+    ? hass.states[config.child_entity]
+    : undefined;
+  return config.child_id ?? (selectedEntity ? attribute<string>(selectedEntity, "child_id") : undefined);
 }
 
 export function getChildName(
@@ -112,12 +124,15 @@ export function getAssignments(
 export function getWeeklyPoints(
   hass: HomeAssistant,
   childId: string,
+  weeklyPointsEntity?: string,
 ): number | undefined {
-  const entity = Object.entries(hass.states).find(
-    ([entityId, candidate]) =>
-      entityId.startsWith("sensor.") &&
-      attribute<string>(candidate, "child_id") === childId,
-  )?.[1];
+  const entity =
+    (weeklyPointsEntity ? hass.states[weeklyPointsEntity] : undefined) ??
+    Object.entries(hass.states).find(
+      ([entityId, candidate]) =>
+        entityId.startsWith("sensor.") &&
+        attribute<string>(candidate, "child_id") === childId,
+    )?.[1];
 
   if (!entity || UNKNOWN_STATES.has(entity.state)) {
     return undefined;

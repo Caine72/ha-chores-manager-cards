@@ -1,12 +1,13 @@
-# Next milestone: live child-card acceptance
+# Next milestone: audited adjustments and previous-week totals
 
-Validate the daily and overview cards in a real Home Assistant dashboard with an administrator and a non-admin child account.
+Build the parent-facing point-management features that are now supported by the latest Chores Manager backend.
 
 Acceptance requires:
 
-1. Active assignments appear once under the correct child and category.
-2. A child can complete and uncomplete only the assignments Home Assistant permits.
-3. Point totals update after state refresh.
-4. Swedish and English follow the Home Assistant language setting.
-5. The cards render directly and inside a Bubble Card at desktop and mobile sizes.
-6. No legacy counter, input boolean, To-do, script, or helper entity is required.
+1. A parent or administrator can make a manual point adjustment through Chores Manager's audited API.
+2. The UI shows the resulting point total after Home Assistant confirms the backend update.
+3. The adjustment workflow is unavailable to child and shared-tablet users unless Home Assistant separately authorizes it.
+4. The overview card can show the selected child's previous-week total from the backend read API.
+5. The daily child workflow remains reversible through assignment switches and does not gain adjustment privileges.
+6. Swedish and English strings cover all new controls, errors, and totals.
+7. Desktop and mobile acceptance verifies both authorization boundaries and live state updates.

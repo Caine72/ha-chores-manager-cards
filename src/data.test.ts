@@ -4,6 +4,7 @@ import {
   findPersonForChild,
   getAssignments,
   getChildren,
+  getConfiguredChildId,
   getWeeklyPoints,
   groupAssignments,
 } from "./data";
@@ -16,7 +17,7 @@ const hass = {
       attributes: {
         assignment_id: "assignment_2",
         child_id: "kid_1",
-        child_name: "Alex",
+        kid_name: "Alex",
         title: "Clear the table",
         category: "Dinner",
         points: 1,
@@ -71,6 +72,21 @@ describe("Chores Manager state adapter", () => {
 
   it("reads the weekly-points sensor rather than an assignment switch", () => {
     expect(getWeeklyPoints(hass, "kid_1")).toBe(3);
+  });
+
+  it("uses explicit child YAML before the legacy weekly-points entity", () => {
+    expect(getConfiguredChildId(hass, { child_id: "kid_2" })).toBe("kid_2");
+    expect(
+      getConfiguredChildId(hass, {
+        child_id: "kid_2",
+        child_entity: "sensor.kid_1_weekly_points",
+      }),
+    ).toBe("kid_2");
+    expect(getConfiguredChildId(hass, { child_entity: "sensor.kid_1_weekly_points" })).toBe("kid_1");
+  });
+
+  it("uses an explicitly selected weekly-points sensor", () => {
+    expect(getWeeklyPoints(hass, "kid_2", "sensor.kid_1_weekly_points")).toBe(3);
   });
 
   it("discovers child names and infers a matching person", () => {

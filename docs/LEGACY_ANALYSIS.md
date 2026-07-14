@@ -13,4 +13,4 @@ The files in `/workspaces/card resources` are household-specific migration refer
 | correction script | `chores_manager/set_current_week_completion` |
 | reset, audit, and notification automations | Outside this card package |
 
-The legacy overview contains manual `-1/+1` counter changes and a previous-week total. Chores Manager `0.3.0` has neither capability. Manual adjustments are a future audited backend milestone; the previous-week value is hidden until a backend read contract exists.
+The legacy overview contains manual `-1/+1` counter changes and a previous-week total. These capabilities are the next card milestone and will use the latest Chores Manager audited-adjustment and previous-week read APIs rather than legacy helpers.

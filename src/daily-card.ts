@@ -3,7 +3,7 @@ import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { DAILY_CARD_TYPE } from "./const";
-import { getAssignments, getChildName, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
+import { getAssignments, getChildName, getConfiguredChildId, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
 import { localize } from "./localize";
 import type { ChoreAssignment, DailyCardConfig } from "./types";
 
@@ -11,44 +11,21 @@ import type { ChoreAssignment, DailyCardConfig } from "./types";
 export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
   private config?: DailyCardConfig;
 
-  @state() private busyEntityId?: string;
   @state() private error?: string;
-  @state() private completionOverrides = new Map<string, boolean>();
+  @state() private pendingCompletions = new Map<string, boolean>();
 
-  static getConfigForm() {
-    return {
-      schema: [
-        { name: "child_id", required: true, selector: { text: {} } },
-        { name: "title", selector: { text: {} } },
-        { name: "name", selector: { text: {} } },
-        { name: "person_entity", selector: { entity: { domain: "person" } } },
-        {
-          name: "locale",
-          selector: {
-            select: {
-              options: [
-                { label: "Automatic", value: "auto" },
-                { label: "English", value: "en" },
-                { label: "Svenska", value: "sv" },
-              ],
-            },
-          },
-        },
-      ],
-    };
-  }
-
-  static getConfigElement(): HTMLElement {
+  static getConfigElement() {
     return document.createElement("chores-manager-daily-card-editor");
   }
+
 
   static getStubConfig(): DailyCardConfig {
     return { child_id: "kid_1", locale: "auto" };
   }
 
   setConfig(config: DailyCardConfig): void {
-    if (!config?.child_id?.trim()) {
-      throw new Error("child_id is required");
+    if (!config?.child_id?.trim() && !config?.child_entity?.trim()) {
+      throw new Error("child_id or child_entity is required");
     }
     this.config = { locale: "auto", show_header: true, show_person: true, show_points: true, ...config };
     this.requestUpdate();
@@ -63,21 +40,26 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
       return nothing;
     }
 
-    const assignments = getAssignments(this.hass, this.config.child_id);
+    const childId = getConfiguredChildId(this.hass, this.config);
+    if (!childId) {
+      return nothing;
+    }
+
+    const assignments = getAssignments(this.hass, childId);
     const displayedAssignments = assignments.map((assignment) => ({
       ...assignment,
       completed:
-        this.completionOverrides.get(assignment.entityId) ?? assignment.completed,
+        this.pendingCompletions.get(assignment.entityId) ?? assignment.completed,
     }));
     const groups = groupAssignments(displayedAssignments);
-    const weeklyPoints = getWeeklyPoints(this.hass, this.config.child_id);
+    const weeklyPoints = getWeeklyPoints(this.hass, childId, this.config.weekly_points_entity ?? this.config.child_entity);
     const points =
       weeklyPoints === undefined
         ? undefined
         : weeklyPoints +
           assignments.reduce((total, assignment) => {
             const completed =
-              this.completionOverrides.get(assignment.entityId) ?? assignment.completed;
+              this.pendingCompletions.get(assignment.entityId) ?? assignment.completed;
             if (completed === assignment.completed) {
               return total;
             }
@@ -85,9 +67,9 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
           }, 0);
     const portrait = getEntityPicture(this.hass, this.config.person_entity);
     const title =
-      this.config.title ??
       this.config.name ??
-      getChildName(this.hass, this.config.child_id) ??
+      this.config.title ??
+      getChildName(this.hass, childId) ??
       localize("chores", this.config.locale, this.hass);
 
     return html`
@@ -119,19 +101,9 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     `;
   }
 
-  protected updated(changedProperties: PropertyValues<this>): void {
-    if (!changedProperties.has("hass") || !this.hass || !this.completionOverrides.size) {
-      return;
-    }
-    const overrides = new Map(this.completionOverrides);
-    for (const [entityId, completed] of overrides) {
-      const state = this.hass.states[entityId]?.state;
-      if ((completed && state === "on") || (!completed && state === "off")) {
-        overrides.delete(entityId);
-      }
-    }
-    if (overrides.size !== this.completionOverrides.size) {
-      this.completionOverrides = overrides;
+  protected willUpdate(changedProperties: PropertyValues<this>): void {
+    if (changedProperties.has("hass")) {
+      this.reconcilePendingCompletions();
     }
   }
 
@@ -144,7 +116,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
             <button
               class="chore ${assignment.completed ? "completed" : ""}"
               data-entity-id=${assignment.entityId}
-              ?disabled=${this.busyEntityId === assignment.entityId}
+              ?disabled=${this.pendingCompletions.has(assignment.entityId)}
               @click=${() => this.toggleAssignment(assignment)}
             >
               <ha-icon icon=${assignment.icon}></ha-icon>
@@ -163,43 +135,16 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     `;
   }
 
-  private updateOptimisticDom(
-    assignment: ChoreAssignment,
-    completed: boolean,
-  ): void {
-    const button = this.renderRoot.querySelector<HTMLButtonElement>(
-      "[data-entity-id=\"" + assignment.entityId + "\"]",
-    );
-    button?.classList.toggle("completed", completed);
-    button
-      ?.querySelector<HTMLElement>(".check")
-      ?.setAttribute("icon", completed ? "mdi:check-circle" : "mdi:circle-outline");
-
-    const points = this.renderRoot.querySelector<HTMLElement>("[data-weekly-points]");
-    if (points && this.hass && this.config && this.config.show_points !== false) {
-      const currentPoints = Number.parseInt(points.textContent ?? "", 10);
-      if (Number.isFinite(currentPoints)) {
-        points.textContent =
-          String(currentPoints + (completed ? assignment.points : -assignment.points)) +
-          " " +
-          localize("points", this.config.locale, this.hass);
-      }
-    }
-  }
-
   private async toggleAssignment(assignment: ChoreAssignment): Promise<void> {
-    if (!this.hass) {
+    if (!this.hass || this.pendingCompletions.has(assignment.entityId)) {
       return;
     }
 
     const completed = !assignment.completed;
-    this.completionOverrides = new Map(this.completionOverrides).set(
+    this.pendingCompletions = new Map(this.pendingCompletions).set(
       assignment.entityId,
       completed,
     );
-    this.updateOptimisticDom(assignment, completed);
-    this.requestUpdate();
-    this.busyEntityId = assignment.entityId;
     this.error = undefined;
 
     try {
@@ -208,14 +153,30 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
         completed ? "turn_on" : "turn_off",
         { entity_id: assignment.entityId },
       );
+      this.reconcilePendingCompletions();
     } catch (error) {
-      const overrides = new Map(this.completionOverrides);
-      overrides.delete(assignment.entityId);
-      this.completionOverrides = overrides;
+      const pendingCompletions = new Map(this.pendingCompletions);
+      pendingCompletions.delete(assignment.entityId);
+      this.pendingCompletions = pendingCompletions;
       this.error =
         error instanceof Error ? error.message : "Unable to update chore";
-    } finally {
-      this.busyEntityId = undefined;
+    }
+  }
+
+  private reconcilePendingCompletions(): void {
+    if (!this.hass || !this.pendingCompletions.size) {
+      return;
+    }
+
+    const pendingCompletions = new Map(this.pendingCompletions);
+    for (const [entityId, completed] of pendingCompletions) {
+      const state = this.hass.states[entityId]?.state;
+      if ((completed && state === "on") || (!completed && state === "off")) {
+        pendingCompletions.delete(entityId);
+      }
+    }
+    if (pendingCompletions.size !== this.pendingCompletions.size) {
+      this.pendingCompletions = pendingCompletions;
     }
   }
 
