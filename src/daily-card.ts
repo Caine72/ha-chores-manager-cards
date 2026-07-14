@@ -1,9 +1,9 @@
-import { css, html, nothing } from "lit";
+import { css, html, nothing, type PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { DAILY_CARD_TYPE } from "./const";
-import { getAssignments, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
+import { getAssignments, getChildName, getConfiguredChildId, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
 import { localize } from "./localize";
 import type { ChoreAssignment, DailyCardConfig } from "./types";
 
@@ -11,41 +11,24 @@ import type { ChoreAssignment, DailyCardConfig } from "./types";
 export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
   private config?: DailyCardConfig;
 
-  @state() private busyEntityId?: string;
   @state() private error?: string;
+  @state() private pendingCompletions = new Map<string, boolean>();
 
-  static getConfigForm() {
-    return {
-      schema: [
-        { name: "child_id", required: true, selector: { text: {} } },
-        { name: "title", selector: { text: {} } },
-        { name: "name", selector: { text: {} } },
-        { name: "person_entity", selector: { entity: { domain: "person" } } },
-        {
-          name: "locale",
-          selector: {
-            select: {
-              options: [
-                { label: "Automatic", value: "auto" },
-                { label: "English", value: "en" },
-                { label: "Svenska", value: "sv" },
-              ],
-            },
-          },
-        },
-      ],
-    };
+  static getConfigElement() {
+    return document.createElement("chores-manager-daily-card-editor");
   }
+
 
   static getStubConfig(): DailyCardConfig {
     return { child_id: "kid_1", locale: "auto" };
   }
 
   setConfig(config: DailyCardConfig): void {
-    if (!config?.child_id?.trim()) {
-      throw new Error("child_id is required");
+    if (!config?.child_id?.trim() && !config?.child_entity?.trim()) {
+      throw new Error("child_id or child_entity is required");
     }
-    this.config = { locale: "auto", ...config };
+    this.config = { locale: "auto", show_header: true, show_person: true, show_points: true, ...config };
+    this.requestUpdate();
   }
 
   getCardSize(): number {
@@ -57,28 +40,57 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
       return nothing;
     }
 
-    const assignments = getAssignments(this.hass, this.config.child_id);
-    const groups = groupAssignments(assignments);
-    const points = getWeeklyPoints(this.hass, this.config.child_id);
+    const childId = getConfiguredChildId(this.hass, this.config);
+    if (!childId) {
+      return nothing;
+    }
+
+    const assignments = getAssignments(this.hass, childId);
+    const displayedAssignments = assignments.map((assignment) => ({
+      ...assignment,
+      completed:
+        this.pendingCompletions.get(assignment.entityId) ?? assignment.completed,
+    }));
+    const groups = groupAssignments(displayedAssignments);
+    const weeklyPoints = getWeeklyPoints(this.hass, childId, this.config.weekly_points_entity ?? this.config.child_entity);
+    const points =
+      weeklyPoints === undefined
+        ? undefined
+        : weeklyPoints +
+          assignments.reduce((total, assignment) => {
+            const completed =
+              this.pendingCompletions.get(assignment.entityId) ?? assignment.completed;
+            if (completed === assignment.completed) {
+              return total;
+            }
+            return total + (completed ? assignment.points : -assignment.points);
+          }, 0);
     const portrait = getEntityPicture(this.hass, this.config.person_entity);
     const title =
-      this.config.title ??
       this.config.name ??
+      this.config.title ??
+      getChildName(this.hass, childId) ??
       localize("chores", this.config.locale, this.hass);
 
     return html`
       <ha-card>
-        <header>
-          ${portrait
-            ? html`<img class="portrait" src=${portrait} alt="" />`
-            : html`<ha-icon class="portrait-icon" icon="mdi:account-circle"></ha-icon>`}
-          <div>
-            <h1>${title}</h1>
-            ${points === undefined
-              ? nothing
-              : html`<p>${points} ${localize("points", this.config.locale, this.hass)}</p>`}
-          </div>
-        </header>
+        ${this.config.show_header !== false
+          ? html`
+              <header>
+                ${this.config.show_person !== false
+                  ? portrait
+                    ? html`<img class="portrait" src=${portrait} alt="" />`
+                    : html`<ha-icon class="portrait-icon" icon="mdi:account-circle"></ha-icon>`
+                  : nothing}
+                <div>
+                  <h1>${title}</h1>
+                  ${this.config.show_points !== false && points !== undefined
+                    ? html`<p data-weekly-points>${points} ${localize("points", this.config.locale, this.hass)}</p>`
+                    : nothing}
+                </div>
+              </header>
+            `
+          : nothing}
         ${this.error ? html`<p class="error" role="alert">${this.error}</p>` : nothing}
         ${groups.size === 0
           ? html`<p class="empty">${localize("no_chores", this.config.locale, this.hass)}</p>`
@@ -89,6 +101,12 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     `;
   }
 
+  protected willUpdate(changedProperties: PropertyValues<this>): void {
+    if (changedProperties.has("hass")) {
+      this.reconcilePendingCompletions();
+    }
+  }
+
   private renderGroup(category: string, entries: ChoreAssignment[]) {
     return html`
       <section>
@@ -97,12 +115,13 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
           (assignment) => html`
             <button
               class="chore ${assignment.completed ? "completed" : ""}"
-              ?disabled=${this.busyEntityId === assignment.entityId}
+              data-entity-id=${assignment.entityId}
+              ?disabled=${this.pendingCompletions.has(assignment.entityId)}
               @click=${() => this.toggleAssignment(assignment)}
             >
               <ha-icon icon=${assignment.icon}></ha-icon>
               <span class="title">${assignment.title}</span>
-              <span class="points">${assignment.points}p</span>
+              ${this.config?.show_points !== false ? html`<span class="points">${assignment.points}p</span>` : nothing}
               <ha-icon
                 class="check"
                 icon=${assignment.completed
@@ -117,24 +136,47 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
   }
 
   private async toggleAssignment(assignment: ChoreAssignment): Promise<void> {
-    if (!this.hass) {
+    if (!this.hass || this.pendingCompletions.has(assignment.entityId)) {
       return;
     }
 
-    this.busyEntityId = assignment.entityId;
+    const completed = !assignment.completed;
+    this.pendingCompletions = new Map(this.pendingCompletions).set(
+      assignment.entityId,
+      completed,
+    );
     this.error = undefined;
 
     try {
       await this.hass.callService(
         "switch",
-        assignment.completed ? "turn_off" : "turn_on",
+        completed ? "turn_on" : "turn_off",
         { entity_id: assignment.entityId },
       );
+      this.reconcilePendingCompletions();
     } catch (error) {
+      const pendingCompletions = new Map(this.pendingCompletions);
+      pendingCompletions.delete(assignment.entityId);
+      this.pendingCompletions = pendingCompletions;
       this.error =
         error instanceof Error ? error.message : "Unable to update chore";
-    } finally {
-      this.busyEntityId = undefined;
+    }
+  }
+
+  private reconcilePendingCompletions(): void {
+    if (!this.hass || !this.pendingCompletions.size) {
+      return;
+    }
+
+    const pendingCompletions = new Map(this.pendingCompletions);
+    for (const [entityId, completed] of pendingCompletions) {
+      const state = this.hass.states[entityId]?.state;
+      if ((completed && state === "on") || (!completed && state === "off")) {
+        pendingCompletions.delete(entityId);
+      }
+    }
+    if (pendingCompletions.size !== this.pendingCompletions.size) {
+      this.pendingCompletions = pendingCompletions;
     }
   }
 

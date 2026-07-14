@@ -1,4 +1,5 @@
 import "./daily-card";
+import "./editor";
 import "./overview-card";
 
 import { CARD_VERSION, DAILY_CARD_TYPE, OVERVIEW_CARD_TYPE } from "./const";

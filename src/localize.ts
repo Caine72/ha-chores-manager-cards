@@ -9,7 +9,9 @@ type TranslationKey =
   | "rewards"
   | "daily"
   | "history"
-  | "correction";
+  | "correction"
+  | "how_points_work"
+  | "reward_levels";
 
 const translations = {
   en: {
@@ -19,6 +21,8 @@ const translations = {
     points: "points",
     remaining: "remaining for",
     rewards: "Points & rewards",
+    how_points_work: "How points work",
+    reward_levels: "Rewards",
     daily: "Chores",
     history: "History",
     correction: "Correction",
@@ -30,6 +34,8 @@ const translations = {
     points: "poäng",
     remaining: "kvar till",
     rewards: "Poäng & belöningar",
+    how_points_work: "Så fungerar poängen",
+    reward_levels: "Belöningar",
     daily: "Sysslor",
     history: "Historik",
     correction: "Korrigering",
