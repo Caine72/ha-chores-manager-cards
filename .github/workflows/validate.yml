@@ -29,6 +29,10 @@ jobs:
           yarn install --immutable
       - name: Validate project
         run: yarn validate
+      - name: Verify dependency resolutions
+        run: yarn dedupe --check
+      - name: Verify committed distribution bundle
+        run: git diff --exit-code -- dist/ha-chores-manager-cards.js
 
   hacs:
     name: HACS
