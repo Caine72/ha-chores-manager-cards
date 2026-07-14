@@ -8,6 +8,11 @@ Standalone Lovelace cards for the [Chores Manager](https://github.com/Caine72/ha
 
 This project requires Chores Manager `0.3.0` or later. It does not replace the integration and it does not store household data.
 
+> [!IMPORTANT]
+> These cards are maintained for my private Home Assistant setup. It is public so it can be installed and updated through HACS as a custom repository. Bug reports are welcome, but there is no support promise, no compatibility guarantee, and no ambition to make this a general-purpose chores platform.
+>
+> It is also vibe coded with AI assistance. The code is intended to be practical, understandable, and reliable for my household workflow rather than polished as a broadly maintained open-source project.
+
 ## Status
 
 Version `0.1.13` provides the production-ready child-facing daily and overview cards. The next milestone adds parent/admin audited manual adjustments and previous-week totals using the latest Chores Manager backend APIs. Dedicated history and correction cards remain later milestones.
