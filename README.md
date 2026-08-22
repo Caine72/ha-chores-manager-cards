@@ -11,8 +11,6 @@ Development is AI-assisted.
 
 ## Screenshots
 
-The examples use the fictional **Acceptance Avery** test child and a generated documentation-only portrait. No real household profile is shown.
-
 | Overview | Daily chores |
 | --- | --- |
 | ![Overview card showing weekly progress and point controls](docs/images/overview-card.png) | ![Daily card showing grouped chores and completion state](docs/images/daily-card.png) |
@@ -43,17 +41,6 @@ Cards select a child by the stable Chores Manager `child_id`. The visual editor 
 Display names resolve from an optional card `name`, then the integration child name. Portraits resolve from the child's associated Home Assistant Person, with an optional card-level `person_entity` override.
 
 See the [configuration guide](docs/CONFIGURATION.md) for YAML examples, display options, rewards, actions, popup placement, and compatibility fields.
-
-## Authorization
-
-Card visibility is not authorization.
-
-- Daily controls use Home Assistant's assignment-switch permissions.
-- Weekly totals and history require access to the selected weekly-points sensor.
-- Point adjustments require control permission for that sensor.
-- Dated correction remains administrator-only.
-
-The integration owns chores, points, history, permissions, and week boundaries. These cards do not store household data.
 
 ## Documentation
 
