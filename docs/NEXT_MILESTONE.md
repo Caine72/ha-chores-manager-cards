@@ -1,13 +1,25 @@
-# Next milestone: audited adjustments and previous-week totals
+# Current milestone: 0.3.0 release
 
-Build the parent-facing point-management features that are now supported by the latest Chores Manager backend.
+The standalone history card and its matching backend contract are implemented and documented.
 
-Acceptance requires:
+## Completed
 
-1. A parent or administrator can make a manual point adjustment through Chores Manager's audited API.
-2. The UI shows the resulting point total after Home Assistant confirms the backend update.
-3. The adjustment workflow is unavailable to child and shared-tablet users unless Home Assistant separately authorizes it.
-4. The overview card can show the selected child's previous-week total from the backend read API.
-5. The daily child workflow remains reversible through assignment switches and does not gain adjustment privileges.
-6. Swedish and English strings cover all new controls, errors, and totals.
-7. Desktop and mobile acceptance verifies both authorization boundaries and live state updates.
+- child selection through YAML and the visual editor;
+- entity-authorized current-week history reads;
+- immutable completion rows grouped by local day;
+- Swedish and English weekday, empty, and error presentation;
+- optional header, portrait, points, and border;
+- automatic child-to-Person portrait resolution;
+- consistent `name` handling across all cards;
+- automated card tests and production build validation;
+- public screenshots using a fictional test child.
+
+## Remaining
+
+1. Release Chores Manager `0.6.0`.
+2. Change the package and card versions to `0.3.0`.
+3. Rebuild and run final validation after the version change.
+4. Merge and confirm checks on `main`.
+5. Publish `v0.3.0` and confirm the JavaScript release asset.
+
+See [the prepared release notes](RELEASE_0.3.0.md).

@@ -1,6 +1,7 @@
 export interface HassEntity {
   state: string;
   attributes: Record<string, unknown>;
+  last_updated?: string;
 }
 
 export interface HomeAssistantUser {
@@ -39,6 +40,7 @@ export interface WeeklyPointsPeriod {
 export interface WeeklyPointsResponse {
   child_id: string;
   child_name: string;
+  person_entity_id?: string;
   points_entity_id: string;
   can_adjust: boolean;
   current_week: WeeklyPointsPeriod;
@@ -57,6 +59,7 @@ export interface WeeklyPointsAdjustmentResponse {
 export interface InventoryChild {
   child_id: string;
   name: string;
+  person_entity_id?: string;
   active: boolean;
   points_entity_id: string | null;
 }
@@ -104,6 +107,13 @@ export interface CompletionSnapshot {
 export interface CurrentWeekCompletionsResponse {
   window: { start: string; end: string };
   completions: CompletionSnapshot[];
+}
+
+export interface CurrentWeekHistoryResponse extends CurrentWeekCompletionsResponse {
+  child_id: string;
+  child_name: string;
+  person_entity_id?: string;
+  points_entity_id: string;
 }
 
 export interface ChoreAssignment {
@@ -173,8 +183,10 @@ export interface BaseCardConfig {
   show_border?: boolean;
 }
 
-export interface DailyCardConfig extends BaseCardConfig {
-  title?: string;
+export type DailyCardConfig = BaseCardConfig;
+
+export interface HistoryCardConfig extends BaseCardConfig {
+  child_id: string;
 }
 
 export interface OverviewCardConfig extends BaseCardConfig {

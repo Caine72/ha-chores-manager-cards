@@ -31,7 +31,11 @@ type TranslationKey =
   | "adjust"
   | "show"
   | "add_completion"
-  | "remove_completion";
+  | "remove_completion"
+  | "weekly_chores"
+  | "history_error"
+  | "history_empty"
+  | "total";
 
 const translations = {
   en: {
@@ -66,6 +70,10 @@ const translations = {
     show: "View",
     add_completion: "Add completion",
     remove_completion: "Remove completion",
+    weekly_chores: "Weekly chores",
+    history_error: "Chore history could not be loaded.",
+    history_empty: "No chores logged this week.",
+    total: "Total",
   },
   sv: {
     chores: "Sysslor",
@@ -99,6 +107,10 @@ const translations = {
     show: "Visa",
     add_completion: "Lägg till genomförd syssla",
     remove_completion: "Ta bort genomförd syssla",
+    weekly_chores: "Veckans sysslor",
+    history_error: "Historiken kunde inte hämtas.",
+    history_empty: "Inga sysslor registrerade den här veckan.",
+    total: "Totalt",
   },
 } as const;
 

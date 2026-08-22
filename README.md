@@ -1,122 +1,50 @@
-![Chores Manager Cards](https://img.shields.io/badge/Home%20Assistant-Chores%20Manager%20Cards-1677B8?logo=home-assistant&logoColor=white)
-
-![Development preview concept](docs/images/development-preview.png)
-
 # Chores Manager Cards
+
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Lovelace%20cards-1677B8?logo=home-assistant&logoColor=white)](https://www.home-assistant.io/)
 
 Standalone Lovelace cards for the [Chores Manager](https://github.com/Caine72/ha-chores-manager) custom integration.
 
-Version `0.2.0` requires Chores Manager `0.5.0` or later. It does not replace the integration and it does not store household data. Older card releases retain their documented backend requirements.
-
 > [!IMPORTANT]
-> These cards are maintained for my private Home Assistant setup. It is public so it can be installed and updated through HACS as a custom repository. Bug reports are welcome, but there is no support promise, no compatibility guarantee, and no ambition to make this a general-purpose chores platform.
->
-> It is also vibe coded with AI assistance. The code is intended to be practical, understandable, and reliable for my household workflow rather than polished as a broadly maintained open-source project.
+> These cards are maintained for a private Home Assistant setup and published primarily for HACS installation. Bug reports are welcome, but there is no support or broad compatibility promise.
 
-## Status
+Development is AI-assisted.
 
-Version `0.2.0` adds backend-authorized audited point adjustments and previous-week totals to the overview card, plus a dedicated administrator-only correction card. The history card remains a later milestone.
+## Screenshots
+
+| Overview | Daily chores |
+| --- | --- |
+| ![Overview card showing weekly progress and point controls](docs/images/overview-card.png) | ![Daily card showing grouped chores and completion state](docs/images/daily-card.png) |
+
+| Current-week history | Correction |
+| --- | --- |
+| ![History card showing completed chores grouped by day](docs/images/history-card.png) | ![Correction card showing dated add and remove controls](docs/images/correction-card.png) |
+
+## Cards
+
+- **Daily** — grouped chores with point values and immediate completion controls.
+- **Overview** — weekly progress, rewards, previous-week points, adjustments, and dashboard actions.
+- **History** — completed chores grouped by day within the current chore week.
+- **Correction** — administrator controls for adding or removing dated current-week completions.
+
+All cards support visual configuration, Swedish and English presentation, border controls, and portraits from a Home Assistant Person associated with the selected child. Daily, History, and Correction can also hide their standalone headers for popup placement.
 
 ## Installation
 
-Install this repository as a HACS Dashboard repository and add the released JavaScript module as a Lovelace resource. For local development, build `dist/ha-chores-manager-cards.js` and register it as a JavaScript module resource.
+Install this repository as a HACS Dashboard custom repository.
 
-## Daily card
+For a manual installation, copy `dist/ha-chores-manager-cards.js` into Home Assistant's `www` directory and register it as a JavaScript module resource.
 
-```yaml
-type: custom:chores-manager-daily-card
-child_id: kid_1
-weekly_points_entity: sensor.kid_1_weekly_points
-name: Alex
-person_entity: person.alex
-show_header: true
-show_border: true
-show_person: true
-show_points: true
-locale: auto
-```
+## Configuration
 
-The card discovers active Chores Manager switches that are visible to the current Home Assistant user. It does not need Bubble Card or a hard-coded list of entity IDs.
+Cards select a child by the stable Chores Manager `child_id`. The visual editor lists available children and matching weekly-points entities.
 
-## Overview card
+Display names resolve from an optional card `name`, then the integration child name. Portraits resolve from the child's associated Home Assistant Person, with an optional card-level `person_entity` override.
 
-```yaml
-type: custom:chores-manager-overview-card
-child_id: kid_1
-name: Alex
-person_entity: person.alex
-show_name: true
-show_person: true
-show_border: true
-person_position: center
-person_size: medium
-show_points: true
-show_previous_week: true
-show_adjustments: true
-progress_color: "#00a6d6"
-rewards:
-  - points: 20
-    label: Friday candy
-    color: "#34c759"
-  - points: 30
-    label: Friday candy and allowance
-    color: "#ff9f0a"
-buttons:
-  - label: Chores
-    icon: mdi:format-list-checks
-    color: "#00bcd4"
-    tap_action:
-      action: navigate
-      navigation_path: /dashboard-chores/daily
-  - label: Correction
-    icon: mdi:wrench-cog
-    color: "#9c27b0"
-    visibility:
-      mode: allow-list
-      users:
-        - parent-user-id
-    tap_action:
-      action: navigate
-      navigation_path: /dashboard-chores/correction
-```
+See the [configuration guide](docs/CONFIGURATION.md) for YAML examples, display options, rewards, actions, popup placement, and compatibility fields.
 
-The visual editor provides a child-name dropdown and a separate Chores Manager weekly-points entity selector. Selecting a child automatically preselects its weekly-points sensor. `child_id` is the current YAML field; legacy `child_entity` remains supported. `show_previous_week` displays the previous complete total using the backend-configured chore-week boundary. The overview and correction cards reload their API data when that boundary changes; they do not calculate a fixed reset weekday. `show_adjustments` enables compact `-1` and `+1` controls only when the backend reports that the signed-in Home Assistant user controls the selected weekly-points sensor. Each response immediately displays the backend-confirmed total. The backend API also supports larger audited amounts and optional reasons for other clients and automations.
+## Documentation
 
-## Correction card
-
-```yaml
-type: custom:chores-manager-correction-card
-child_id: kid_1
-name: Alex
-person_entity: person.alex
-locale: auto
-show_header: true
-show_border: true
-```
-
-The separate administrator-only correction card is designed to sit directly in a dashboard or inside a Bubble Card popup. Set `show_header: false` when the popup wrapper already supplies its own portrait, title, points, back, and close controls. It reproduces the legacy current-week date navigation, category-grouped chore list, and circular add/remove completion controls while using Chores Manager inventory and correction WebSocket contracts. It has no helper, counter, date entity, summary sensor, or script dependency.
-
-All three cards expose `show_border` in their visual editors. Set it to `false` to remove the outer Home Assistant card border while retaining the card background and content layout.
-
-Reward levels define the progress targets. `progress_color` controls the bar before the first reward, while each optional reward `color` takes effect at that threshold. Colors accept `#RRGGBB` values and common Home Assistant names such as `amber`, `cyan`, and `purple`. The unfilled progress track is a darker shade of the active progress color. The expanded Points & rewards section lists the child's available chores grouped by points and the configured rewards. `goal_points` remains a compatibility fallback for older YAML and is not shown in the visual editor.
-
-Card visibility is not authorization. Chores Manager enforces read and control permissions against the selected child's weekly-points sensor and stores every applied manual change as an audited adjustment rather than rewriting completion history.
-
-`buttons` supports up to three configurable buttons. Each button always shows a native multi-select populated with active Home Assistant users, alongside its actions and visibility mode. User selection requires an administrator account, as required by Home Assistant’s user-list API. Legacy `daily_action`, `history_action`, and `correction_action` remain supported for existing dashboards.
-
-## Continuous integration
-
-Pull requests must pass linting, TypeScript validation, unit tests, a production build, dependency deduplication, generated-bundle freshness, HACS validation, and the npm-lockfile guard.
-
-## Development
-
-Use the supplied dev container or Node 24 with Yarn 4.
-
-```sh
-corepack enable
-corepack prepare yarn@4.12.0 --activate
-yarn install --immutable
-yarn validate
-```
-
-See [the architecture](docs/ARCHITECTURE.md), [legacy analysis](docs/LEGACY_ANALYSIS.md), and [roadmap](docs/ROADMAP.md), and [next milestone](docs/NEXT_MILESTONE.md).
+- [Configuration](docs/CONFIGURATION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Migration notes](docs/LEGACY_ANALYSIS.md)
+- [Roadmap](docs/ROADMAP.md)

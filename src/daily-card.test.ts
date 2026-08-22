@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ChoresManagerDailyCard } from "./daily-card";
-import type { HomeAssistant } from "./types";
+import type { DailyCardConfig, HomeAssistant } from "./types";
 
 interface Deferred {
   promise: Promise<void>;
@@ -47,7 +47,7 @@ function createHass(
 function createCard(hass: HomeAssistant): ChoresManagerDailyCard {
   const card = new ChoresManagerDailyCard();
   card.hass = hass;
-  card.setConfig({ child_id: "kid_28", title: "Alex" });
+  card.setConfig({ child_id: "kid_28", name: "Alex" });
   document.body.append(card);
   return card;
 }
@@ -61,6 +61,18 @@ afterEach(() => {
 });
 
 describe("Chores Manager daily card", () => {
+  it("ignores the removed legacy title property", async () => {
+    const card = new ChoresManagerDailyCard();
+    card.hass = createHass(false, 4, vi.fn<HomeAssistant["callService"]>());
+    card.setConfig({ child_id: "kid_28", title: "asdasd" } as DailyCardConfig & {
+      title: string;
+    });
+    document.body.append(card);
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector("h1")?.textContent).toBe("Alex");
+  });
+
   it("can hide the outer card border", async () => {
     const card = new ChoresManagerDailyCard();
     card.hass = createHass(false, 4, vi.fn<HomeAssistant["callService"]>());

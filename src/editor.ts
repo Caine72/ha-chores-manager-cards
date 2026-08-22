@@ -7,12 +7,13 @@ import type {
   CorrectionCardConfig,
   DailyCardConfig,
   HomeAssistant,
+  HistoryCardConfig,
   OverviewButton,
   OverviewCardConfig,
 } from "./types";
 
-type EditorConfig = (CorrectionCardConfig | DailyCardConfig | OverviewCardConfig) & { type?: string };
-type EditorKind = "correction" | "daily" | "overview";
+type EditorConfig = (CorrectionCardConfig | DailyCardConfig | HistoryCardConfig | OverviewCardConfig) & { type?: string };
+type EditorKind = "correction" | "daily" | "history" | "overview";
 type FormValueChangedEvent<T> = CustomEvent<{ value: T }>;
 interface UserOption {
   id: string;
@@ -88,6 +89,16 @@ function defaults(config: EditorConfig, kind: EditorKind): EditorConfig {
       locale: "auto",
       show_border: true,
       show_header: true,
+      ...config,
+    };
+  }
+  if (kind === "history") {
+    return {
+      locale: "auto",
+      show_border: true,
+      show_header: true,
+      show_person: true,
+      show_points: true,
       ...config,
     };
   }
@@ -180,7 +191,7 @@ abstract class ChoresManagerCardEditor extends LitElement {
     if (this.kind === "correction") {
       return this.config;
     }
-    const entityConfig = this.config as DailyCardConfig | OverviewCardConfig;
+    const entityConfig = this.config as DailyCardConfig | HistoryCardConfig | OverviewCardConfig;
     const childId = entityConfig.child_id ?? (entityConfig.child_entity
       ? this.hass.states[entityConfig.child_entity]?.attributes.child_id
       : undefined);
@@ -241,7 +252,7 @@ abstract class ChoresManagerCardEditor extends LitElement {
       ];
     }
 
-    if (this.kind === "daily") {
+    if (this.kind === "daily" || this.kind === "history") {
       return [
         ...shared,
         {
@@ -406,8 +417,8 @@ abstract class ChoresManagerCardEditor extends LitElement {
       this.emitConfigChanged();
       return;
     }
-    const entityValue = value as DailyCardConfig | OverviewCardConfig;
-    const entityConfig = this.config as DailyCardConfig | OverviewCardConfig;
+    const entityValue = value as DailyCardConfig | HistoryCardConfig | OverviewCardConfig;
+    const entityConfig = this.config as DailyCardConfig | HistoryCardConfig | OverviewCardConfig;
     const changedChild = entityValue.child_id !== entityConfig.child_id;
     this.config = defaults(
       {
@@ -491,12 +502,14 @@ abstract class ChoresManagerCardEditor extends LitElement {
           child_id: "Barn", color: "Färg", description: "Beskrivning",
           double_tap_action: "Dubbeltryck", goal_points: "Reservmålpoäng",
           hold_action: "Håll inne", icon: "Ikon", label: "Etikett", locale: "Språk",
-          name: "Visningsnamn", person_entity: "Person", person_position: "Bildposition",
+          name: "Visningsnamn", person_entity: "Personöverskrivning", person_position: "Bildposition",
           person_size: "Bildstorlek", points: "Poäng", progress_color: "Förloppsfärg",
           remove_button: "Ta bort knapp", rewards: "Belöningsnivåer",
           show_header: "Visa sidhuvud", show_name: "Visa namn", show_person: "Visa bild",
           show_border: "Visa kortkant",
-          show_points: this.kind === "daily" ? "Visa poäng" : "Visa poäng och belöningsmeddelande",
+          show_points: this.kind === "daily" || this.kind === "history"
+            ? "Visa poäng"
+            : "Visa poäng och belöningsmeddelande",
           show_previous_week: "Visa förra veckans poäng", show_adjustments: "Visa poängjustering",
           tap_action: "Tryck", visibility_mode: "Synlig för", visibility_users: "Användare",
           weekly_points_entity: "Veckopoäng",
@@ -506,12 +519,14 @@ abstract class ChoresManagerCardEditor extends LitElement {
           child_id: "Child", color: "Color", description: "Description",
           double_tap_action: "Double-tap behavior", goal_points: "Fallback goal points",
           hold_action: "Hold behavior", icon: "Icon", label: "Label", locale: "Language",
-          name: "Display name", person_entity: "Person", person_position: "Picture position",
+          name: "Display name", person_entity: "Person override", person_position: "Picture position",
           person_size: "Picture size", points: "Points", progress_color: "Progress color",
           remove_button: "Remove button", rewards: "Reward levels",
           show_header: "Show header", show_name: "Show name", show_person: "Show picture",
           show_border: "Show card border",
-          show_points: this.kind === "daily" ? "Show points" : "Show points and reward message",
+          show_points: this.kind === "daily" || this.kind === "history"
+            ? "Show points"
+            : "Show points and reward message",
           show_previous_week: "Show previous-week points", show_adjustments: "Show point adjustment",
           tap_action: "Tap behavior", visibility_mode: "Visible to", visibility_users: "Users",
           weekly_points_entity: "Weekly points",
@@ -544,10 +559,16 @@ export class ChoresManagerCorrectionCardEditor extends ChoresManagerCardEditor {
   protected readonly kind = "correction";
 }
 
+@customElement("chores-manager-history-card-editor")
+export class ChoresManagerHistoryCardEditor extends ChoresManagerCardEditor {
+  protected readonly kind = "history";
+}
+
 declare global {
   interface HTMLElementTagNameMap {
     "chores-manager-daily-card-editor": ChoresManagerDailyCardEditor;
     "chores-manager-overview-card-editor": ChoresManagerOverviewCardEditor;
     "chores-manager-correction-card-editor": ChoresManagerCorrectionCardEditor;
+    "chores-manager-history-card-editor": ChoresManagerHistoryCardEditor;
   }
 }

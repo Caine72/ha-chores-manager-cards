@@ -18,6 +18,40 @@ const hass: HomeAssistant = {
 };
 
 describe("dynamic Chores Manager editor", () => {
+  it("supports history-card configuration and display controls", async () => {
+    const editor = document.createElement("chores-manager-history-card-editor") as HTMLElement & {
+      hass: HomeAssistant;
+      setConfig(config: Record<string, unknown>): void;
+    };
+    editor.hass = hass;
+    editor.setConfig({ child_id: "kid_28" });
+    document.body.append(editor);
+    await (editor as unknown as { updateComplete: Promise<void> }).updateComplete;
+
+    const form = editor.shadowRoot?.querySelector("ha-form") as HTMLElement & {
+      schema: Array<Record<string, unknown>>;
+      data: Record<string, unknown>;
+      computeLabel: (schema: { name: string }) => string | undefined;
+    };
+    expect(form.data).toMatchObject({
+      child_id: "kid_28",
+      weekly_points_entity: "sensor.kid_28_weekly_points",
+      show_header: true,
+      show_border: true,
+      show_person: true,
+      show_points: true,
+    });
+    expect(form.schema.map((item) => item.name)).toEqual([
+      "child_id",
+      "weekly_points_entity",
+      "name",
+      "person_entity",
+      "locale",
+      "display",
+    ]);
+    expect(form.computeLabel({ name: "show_points" })).toBe("Show points");
+  });
+
   it("supports correction-card configuration with real child choices", async () => {
     const editor = document.createElement("chores-manager-correction-card-editor") as HTMLElement & {
       hass: HomeAssistant;

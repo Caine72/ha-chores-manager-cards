@@ -1,20 +1,24 @@
 # Roadmap
 
-## Foundation and child cards
+## Available cards
 
-- [x] HACS dashboard repository, TypeScript/Lit build, validation workflows, and public documentation.
-- [x] Daily card using visible assignment switches for non-admin children.
-- [x] Overview card using weekly-points sensors, optional person portraits, configurable rewards, and standard actions.
-- [x] Live Home Assistant desktop and mobile acceptance.
+- [x] Daily chores from visible assignment switches.
+- [x] Weekly overview with rewards, previous-week totals, and audited adjustments.
+- [x] Administrator correction within the backend-owned current chore week.
+- [x] Entity-authorized current-week history.
+- [x] Visual editors, border controls, localization, and optional Person portraits.
 
-## Next release: audited adjustments and previous-week totals
+## Current release: 0.3.0
 
-- [x] Add a parent/admin adjustment experience backed by Chores Manager's audited manual-adjustment API.
-- [x] Add a previous-week total to the overview card using Chores Manager's read API.
-- [x] Keep child-facing cards restricted to their existing assignment-switch workflow.
-- [x] Document required Chores Manager version, authorization, and audit-trail behaviour.
+- [x] Align card naming on `name` → integration child name → localized fallback.
+- [x] Document automatic child-to-Person portrait resolution.
+- [x] Add public screenshots with fictional test data.
+- [x] Prepare version compatibility and release notes.
+- [ ] Apply the version bump, merge, and publish after backend `0.6.0`.
 
-## Later milestones
+## Later
 
-- [ ] Implement a current-week history card using the backend's parent-user read authorization policy.
-- [x] Implement a dedicated admin correction card.
+- Improve accessible labels and keyboard behavior where live acceptance identifies gaps.
+- Add diagnostics for missing or unavailable selected entities without moving business data into the frontend.
+- Consider broader history ranges only after the backend defines retention, authorization, and pagination.
+- Keep Home Assistant actions and wrapper compatibility independent from any one popup card.
