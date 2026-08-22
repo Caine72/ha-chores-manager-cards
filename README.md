@@ -11,13 +11,15 @@ Development is AI-assisted.
 
 ## Screenshots
 
+Click a preview to open the full-size image.
+
 | Overview | Daily chores |
 | --- | --- |
-| ![Overview card showing weekly progress and point controls](docs/images/overview-card.png) | ![Daily card showing grouped chores and completion state](docs/images/daily-card.png) |
+| <a href="docs/images/overview-card.png"><img src="docs/images/overview-card.png" alt="Overview card showing weekly progress and point controls" height="280"></a> | <a href="docs/images/daily-card.png"><img src="docs/images/daily-card.png" alt="Daily card showing grouped chores and completion state" height="280"></a> |
 
 | Current-week history | Correction |
 | --- | --- |
-| ![History card showing completed chores grouped by day](docs/images/history-card.png) | ![Correction card showing dated add and remove controls](docs/images/correction-card.png) |
+| <a href="docs/images/history-card.png"><img src="docs/images/history-card.png" alt="History card showing completed chores grouped by day" height="280"></a> | <a href="docs/images/correction-card.png"><img src="docs/images/correction-card.png" alt="Correction card showing dated add and remove controls" height="280"></a> |
 
 ## Cards
 
