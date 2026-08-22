@@ -29,9 +29,9 @@ header, navigated through an `input_datetime`, grouped explicitly listed
 `input_boolean` helpers into Morning, Dinner, Cat, and Other sections, and delegated
 changes to a correction script.
 
-The dedicated correction-card milestone should preserve the compact portrait/name and
-point header, date navigation, category grouping, and large add/remove targets shown in
-the reference images. It must derive children, assignments, categories, icons, points,
-dates, and completion state from Chores Manager's inventory and correction WebSocket
-contracts. Bubble Card, counters, input datetimes, input booleans, summary sensors, and
-correction scripts remain migration references rather than runtime dependencies.
+The dedicated correction card preserves the compact portrait/name and point header,
+date navigation, category grouping, and large add/remove targets from the reference
+interface. Children, assignments, categories, icons, points, dates, and completion
+state come from Chores Manager's inventory and correction WebSocket contracts. Bubble
+Card, counters, input datetimes, input booleans, summary sensors, and correction scripts
+remain migration references rather than runtime dependencies.

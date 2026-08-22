@@ -1,14 +1,25 @@
-# Next milestone: authorized current-week history
+# Current milestone: history-card release acceptance
 
-Build a standalone history card on the integration-owned, entity-authorized completion-history contract.
+The standalone history card and its matching backend contract are implemented. The remaining milestone is release acceptance and documentation alignment.
 
-Acceptance requires:
+## Completed
 
-1. A card can select one child through YAML or the visual editor.
-2. The backend returns only that child's immutable completion snapshots from the configured current chore week.
-3. Home Assistant read permission for the child's weekly-points sensor is enforced by the backend.
-4. The card groups entries by local date, localizes weekday headings, and shows optional row points and daily totals.
-5. Empty and authorization/load-failure states are clear in Swedish and English.
-6. Header, portrait, points, and outer border can be toggled for standalone or popup placement.
-7. Template sensors, Markdown cards, To-do lists, Bubble Card, and card-mod remain optional migration references rather than dependencies.
-8. Automated tests and live desktop/mobile acceptance cover rendering, refresh, authorization, and responsive layout.
+- child selection through YAML and the visual editor;
+- entity-authorized current-week history reads;
+- immutable completion rows grouped by local day;
+- Swedish and English weekday, empty, and error presentation;
+- optional header, portrait, points, and border;
+- automatic child-to-Person portrait resolution;
+- consistent `name` handling across all cards;
+- automated card tests and production build validation;
+- public screenshots using a fictional test child.
+
+## Acceptance before release
+
+1. Validate Overview, Daily, History, and Correction against the matching backend in a signed-in Home Assistant session.
+2. Check desktop and mobile widths, including long chore names and tall correction lists.
+3. Confirm non-admin read/control boundaries with restricted test users.
+4. Confirm Bubble Card embedding with header and border disabled.
+5. Verify HACS installation and resource refresh from the release artifact.
+
+Template sensors, Markdown cards, To-do lists, helper entities, Bubble Card, and card-mod remain migration references rather than runtime dependencies.

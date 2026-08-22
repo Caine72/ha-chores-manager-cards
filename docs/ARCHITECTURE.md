@@ -1,25 +1,34 @@
 # Architecture
 
-Chores Manager Cards is a frontend-only package. It never stores chores, points, permissions, or history.
+Chores Manager Cards is a frontend-only package. The integration owns children, chores, assignments, points, week boundaries, permissions, and immutable history.
 
-## Child-facing cards
+## Data sources and control
 
-The daily and overview cards use only Home Assistant entities visible to the current user:
+| Card | Reads | Writes | Authorization |
+| --- | --- | --- | --- |
+| Daily | Visible assignment switches and weekly-points sensor | `switch.turn_on`, `switch.turn_off` | Home Assistant entity visibility and service permissions |
+| Overview | Visible entities and `chores_manager/weekly_points` | `chores_manager/adjust_weekly_points` | Weekly-points sensor `read` or `control` permission |
+| History | `chores_manager/current_week_history` | None | Weekly-points sensor `read` permission |
+| Correction | Inventory, current-week completions, and weekly points | `chores_manager/set_current_week_completion` | Administrator-only backend commands |
 
-- active assignment switches are discovered from their `assignment_id`, `child_id`, title, category, points, icon, and sort-order attributes;
-- the weekly point total is read from the child weekly-points sensor;
-- the daily card calls `switch.turn_on` and `switch.turn_off` for the selected assignment.
+Conditional rendering is presentation, not authorization. The backend returns capabilities and enforces each protected operation.
 
-This lets a child use the cards without admin WebSocket access. Entity visibility and service permissions remain enforced by Home Assistant.
+## Stable identity
 
-## Parent and admin cards
+Cards select a child by the integration's stable `child_id`. Assignment switches expose stable child, chore, and assignment IDs as attributes. Display names and entity IDs may change without becoming relationship keys.
 
-- The overview card reads current/previous totals from `chores_manager/weekly_points` and renders adjustment controls only when its backend `can_adjust` capability is true.
-- Manual changes use `chores_manager/adjust_weekly_points` and display the backend-confirmed result; the integration owns authorization and audit storage.
-- The history card reads one child's current-week immutable completion snapshots from `chores_manager/current_week_history`; the backend enforces read permission against that child's weekly-points sensor and owns the week boundary.
-- The dedicated correction card uses the existing admin-only inventory and correction WebSocket commands and can be embedded in a Bubble Card popup without depending on Bubble Card.
-- UI visibility is never a security boundary.
+All cards resolve their heading consistently: a non-empty card `name`, then the integration child name, then a localized fallback. The former daily-card `title` field is ignored.
 
-## Presentation
+## Portraits
 
-Cards render independently. A child may carry an optional integration-owned `person_entity_id`; cards resolve its current `entity_picture` from visible Home Assistant state, while card YAML may override the Person. The integration stores no image files and the association never grants access. Bubble Card may wrap a card, but it is not imported or required. Overview action tiles use standard Home Assistant actions so a dashboard chooses navigation or popup presentation.
+A child may carry an optional `person_entity_id`. Cards resolve the associated Person's current `entity_picture` from visible Home Assistant state, while card YAML may override it with `person_entity`.
+
+The integration stores no image files. The association is a presentation hint and does not affect permissions.
+
+## Refresh behavior
+
+Visible entity changes update child-facing state through Home Assistant. Overview, history, and correction API data reload when the selected child, connection, weekly-points entity, or backend week boundary changes. Consumers use returned week dates rather than calculating a reset weekday.
+
+## Optional wrappers
+
+Cards render independently. Bubble Card may provide a popup shell, but it is not imported or required. Header and border controls allow the standalone cards to fit either direct dashboard placement or a wrapper.
