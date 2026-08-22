@@ -1,6 +1,7 @@
 export interface HassEntity {
   state: string;
   attributes: Record<string, unknown>;
+  last_updated?: string;
 }
 
 export interface HomeAssistantUser {
@@ -106,6 +107,12 @@ export interface CurrentWeekCompletionsResponse {
   completions: CompletionSnapshot[];
 }
 
+export interface CurrentWeekHistoryResponse extends CurrentWeekCompletionsResponse {
+  child_id: string;
+  child_name: string;
+  points_entity_id: string;
+}
+
 export interface ChoreAssignment {
   assignmentId: string;
   entityId: string;
@@ -175,6 +182,10 @@ export interface BaseCardConfig {
 
 export interface DailyCardConfig extends BaseCardConfig {
   title?: string;
+}
+
+export interface HistoryCardConfig extends BaseCardConfig {
+  child_id: string;
 }
 
 export interface OverviewCardConfig extends BaseCardConfig {

@@ -13,7 +13,13 @@ The files in `/workspaces/card resources` are household-specific migration refer
 | correction script | `chores_manager/set_current_week_completion` |
 | reset, audit, and notification automations | Outside this card package |
 
-The legacy overview contains manual `-1/+1` counter changes and a previous-week total. These capabilities are the next card milestone and will use the latest Chores Manager audited-adjustment and previous-week read APIs rather than legacy helpers.
+The legacy overview contains manual `-1/+1` counter changes and a previous-week total. The overview card now uses Chores Manager's audited-adjustment and previous-week read APIs rather than legacy helpers.
+
+## History popup reference
+
+The household history view rendered a child-specific Markdown attribute from a template sensor inside a Bubble Card popup. Its useful presentation contract is a compact list of the current week's completed chores grouped by day, with each snapshot's points and a daily total.
+
+The standalone history card preserves that hierarchy while reading structured snapshots from `chores_manager/current_week_history`. The integration owns child scoping, authorization, week boundaries, and immutable completion data. Template sensors, To-do list parsing, Markdown, card-mod, and Bubble Card remain optional migration references and are not imported by the card.
 
 ## Correction popup reference
 

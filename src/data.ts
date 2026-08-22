@@ -24,6 +24,21 @@ function normalized(value: string): string {
   return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 }
 
+function findWeeklyPointsEntity(
+  hass: HomeAssistant,
+  childId: string,
+  weeklyPointsEntityId?: string,
+): HassEntity | undefined {
+  return (
+    (weeklyPointsEntityId ? hass.states[weeklyPointsEntityId] : undefined) ??
+    Object.entries(hass.states).find(
+      ([entityId, candidate]) =>
+        entityId.startsWith("sensor.") &&
+        attribute<string>(candidate, "child_id") === childId,
+    )?.[1]
+  );
+}
+
 export function getChildren(hass: HomeAssistant): ChoreChild[] {
   const children = new Map<string, string>();
 
@@ -126,13 +141,7 @@ export function getWeeklyPoints(
   childId: string,
   weeklyPointsEntity?: string,
 ): number | undefined {
-  const entity =
-    (weeklyPointsEntity ? hass.states[weeklyPointsEntity] : undefined) ??
-    Object.entries(hass.states).find(
-      ([entityId, candidate]) =>
-        entityId.startsWith("sensor.") &&
-        attribute<string>(candidate, "child_id") === childId,
-    )?.[1];
+  const entity = findWeeklyPointsEntity(hass, childId, weeklyPointsEntity);
 
   if (!entity || UNKNOWN_STATES.has(entity.state)) {
     return undefined;
@@ -147,15 +156,26 @@ export function getWeeklyPointsWeekStart(
   childId: string,
   weeklyPointsEntity?: string,
 ): string | undefined {
-  const entity =
-    (weeklyPointsEntity ? hass.states[weeklyPointsEntity] : undefined) ??
-    Object.entries(hass.states).find(
-      ([entityId, candidate]) =>
-        entityId.startsWith("sensor.") &&
-        attribute<string>(candidate, "child_id") === childId,
-    )?.[1];
+  const entity = findWeeklyPointsEntity(hass, childId, weeklyPointsEntity);
   const weekStart = entity ? attribute<unknown>(entity, "week_start") : undefined;
   return typeof weekStart === "string" ? weekStart : undefined;
+}
+
+export function getWeeklyPointsUpdateKey(
+  hass: HomeAssistant,
+  childId: string,
+  weeklyPointsEntityId?: string,
+): string | undefined {
+  const entity = findWeeklyPointsEntity(hass, childId, weeklyPointsEntityId);
+  if (!entity) {
+    return undefined;
+  }
+  const weekStart = attribute<unknown>(entity, "week_start");
+  return [
+    entity.state,
+    typeof weekStart === "string" ? weekStart : "",
+    entity.last_updated ?? "",
+  ].join("|");
 }
 
 export function getEntityPicture(

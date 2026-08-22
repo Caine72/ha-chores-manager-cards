@@ -1,9 +1,10 @@
 import "./daily-card";
 import "./correction-card";
 import "./editor";
+import "./history-card";
 import "./overview-card";
 
-import { CARD_VERSION, CORRECTION_CARD_TYPE, DAILY_CARD_TYPE, OVERVIEW_CARD_TYPE } from "./const";
+import { CARD_VERSION, CORRECTION_CARD_TYPE, DAILY_CARD_TYPE, HISTORY_CARD_TYPE, OVERVIEW_CARD_TYPE } from "./const";
 
 declare global {
   interface Window {
@@ -24,6 +25,12 @@ console.info(
 
 window.customCards = window.customCards ?? [];
 window.customCards.push(
+  {
+    type: HISTORY_CARD_TYPE,
+    name: "Chores Manager History",
+    description: "Current-week completed chores by child and date.",
+    preview: false,
+  },
   {
     type: CORRECTION_CARD_TYPE,
     name: "Chores Manager Correction",

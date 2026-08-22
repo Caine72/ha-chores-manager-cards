@@ -15,7 +15,7 @@ Version `0.2.0` requires Chores Manager `0.5.0` or later. It does not replace th
 
 ## Status
 
-Version `0.2.0` adds backend-authorized audited point adjustments and previous-week totals to the overview card, plus a dedicated administrator-only correction card. The history card remains a later milestone.
+Version `0.2.0` adds backend-authorized audited point adjustments and previous-week totals to the overview card, plus a dedicated administrator-only correction card. The next release adds a standalone, entity-authorized current-week history card.
 
 ## Installation
 
@@ -96,7 +96,26 @@ show_border: true
 
 The separate administrator-only correction card is designed to sit directly in a dashboard or inside a Bubble Card popup. Set `show_header: false` when the popup wrapper already supplies its own portrait, title, points, back, and close controls. It reproduces the legacy current-week date navigation, category-grouped chore list, and circular add/remove completion controls while using Chores Manager inventory and correction WebSocket contracts. It has no helper, counter, date entity, summary sensor, or script dependency.
 
-All three cards expose `show_border` in their visual editors. Set it to `false` to remove the outer Home Assistant card border while retaining the card background and content layout.
+## History card
+
+```yaml
+type: custom:chores-manager-history-card
+child_id: kid_1
+weekly_points_entity: sensor.kid_1_weekly_points
+name: Veckans sysslor
+person_entity: person.alex
+locale: auto
+show_header: true
+show_border: true
+show_person: true
+show_points: true
+```
+
+The standalone history card lists the selected child's completed chores in the backend-configured current chore week, grouped by local day with optional point values and daily totals. Set `show_header: false` and `show_border: false` when a Bubble Card popup already supplies the surrounding header and surface. Reading history requires Home Assistant read permission for the child's weekly-points sensor. The integration enforces that permission and owns the date window; the card never assumes a reset weekday.
+
+The old template sensor, Markdown card, To-do list, Bubble Card, and card-mod configuration are migration references only. None are runtime dependencies.
+
+All four cards expose `show_border` in their visual editors. Set it to `false` to remove the outer Home Assistant card border while retaining the card background and content layout.
 
 Reward levels define the progress targets. `progress_color` controls the bar before the first reward, while each optional reward `color` takes effect at that threshold. Colors accept `#RRGGBB` values and common Home Assistant names such as `amber`, `cyan`, and `purple`. The unfilled progress track is a darker shade of the active progress color. The expanded Points & rewards section lists the child's available chores grouped by points and the configured rewards. `goal_points` remains a compatibility fallback for older YAML and is not shown in the visual editor.
 
@@ -119,4 +138,4 @@ yarn install --immutable
 yarn validate
 ```
 
-See [the architecture](docs/ARCHITECTURE.md), [legacy analysis](docs/LEGACY_ANALYSIS.md), and [roadmap](docs/ROADMAP.md), and [next milestone](docs/NEXT_MILESTONE.md).
+See [the architecture](docs/ARCHITECTURE.md), [legacy analysis](docs/LEGACY_ANALYSIS.md), [roadmap](docs/ROADMAP.md), and [next milestone](docs/NEXT_MILESTONE.md).

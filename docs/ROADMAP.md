@@ -14,7 +14,13 @@
 - [x] Keep child-facing cards restricted to their existing assignment-switch workflow.
 - [x] Document required Chores Manager version, authorization, and audit-trail behaviour.
 
+## Current milestone: current-week history
+
+- [x] Implement a standalone current-week history card using the backend's entity read authorization policy.
+- [x] Group immutable completion snapshots by local date with localized day headings and daily totals.
+- [x] Support visual editing and borderless/headerless Bubble Card embedding without a Bubble Card dependency.
+- [ ] Complete live desktop and mobile acceptance against the matching backend branch.
+
 ## Later milestones
 
-- [ ] Implement a current-week history card using the backend's parent-user read authorization policy.
 - [x] Implement a dedicated admin correction card.
