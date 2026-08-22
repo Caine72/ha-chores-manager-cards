@@ -30,7 +30,17 @@ All cards support visual configuration, Swedish and English presentation, border
 
 ## Installation
 
-Install this repository as a HACS Dashboard custom repository.
+Chores Manager `0.6.0` or newer is required.
+
+### HACS
+
+1. Open **HACS > Dashboard**.
+2. Open the menu and select **Custom repositories**.
+3. Add `https://github.com/Caine72/ha-chores-manager-cards` with the category **Dashboard**.
+4. Find **Chores Manager Cards** in HACS and install the latest version.
+5. Refresh the browser.
+
+### Manual
 
 For a manual installation, copy `dist/ha-chores-manager-cards.js` into Home Assistant's `www` directory and register it as a JavaScript module resource.
 
