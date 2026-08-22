@@ -61,6 +61,16 @@ afterEach(() => {
 });
 
 describe("Chores Manager daily card", () => {
+  it("can hide the outer card border", async () => {
+    const card = new ChoresManagerDailyCard();
+    card.hass = createHass(false, 4, vi.fn<HomeAssistant["callService"]>());
+    card.setConfig({ child_id: "kid_28", show_border: false });
+    document.body.append(card);
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector("ha-card")?.classList).toContain("borderless");
+  });
+
   it("rerenders from a new Home Assistant state without recreating the card", async () => {
     const callService = vi.fn<HomeAssistant["callService"]>();
     const card = createCard(createHass(false, 4, callService));

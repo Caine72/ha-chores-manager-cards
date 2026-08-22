@@ -3,8 +3,8 @@ import type {
   ActionConfig as HaActionConfig,
   HomeAssistant as HaHomeAssistant,
 } from "custom-card-helpers";
-import { css, html, nothing } from "lit";
-import { customElement } from "lit/decorators.js";
+import { css, html, nothing, type PropertyValues } from "lit";
+import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { OVERVIEW_CARD_TYPE } from "./const";
@@ -18,9 +18,12 @@ import {
 import { localize } from "./localize";
 import type {
   ChoreAssignment,
+  HomeAssistant,
   OverviewButton,
   OverviewCardConfig,
   RewardTier,
+  WeeklyPointsAdjustmentResponse,
+  WeeklyPointsResponse,
 } from "./types";
 
 const COLOR_ALIASES: Record<string, string> = {
@@ -47,6 +50,13 @@ const LEGACY_BUTTONS: Array<Pick<OverviewButton, "label" | "icon" | "color">> = 
 @customElement(OVERVIEW_CARD_TYPE)
 export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
   private config?: OverviewCardConfig;
+  @state() private weeklyPoints?: WeeklyPointsResponse;
+  @state() private weeklyPointsError = false;
+  @state() private adjustmentPending = false;
+  @state() private adjustmentError = false;
+  @state() private confirmedPoints?: number;
+  private weeklyPointsChildId?: string;
+  private weeklyPointsConnection?: HomeAssistant["connection"];
   private readonly heldButtons = new WeakSet<HTMLButtonElement>();
   private readonly holdTimers = new WeakMap<HTMLButtonElement, number>();
   private readonly clickTimers = new WeakMap<HTMLButtonElement, number>();
@@ -60,6 +70,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
       child_id: "kid_1",
       goal_points: 20,
       progress_color: "#00a6d6",
+      person_position: "center",
       locale: "auto",
       rewards: [
         { points: 20, label: "Weekly reward", color: "#34c759" },
@@ -77,15 +88,44 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     }
     this.config = {
       locale: "auto",
-      person_position: "left",
+      person_position: "center",
       person_size: "medium",
       show_name: true,
       show_person: true,
       show_points: true,
+      show_previous_week: true,
+      show_adjustments: true,
+      show_border: true,
       rewards: [],
       ...config,
     };
+    if (this.hass) {
+      const childId = getConfiguredChildId(this.hass, this.config);
+      if (childId) {
+        this.loadWeeklyPoints(childId);
+      }
+    }
     this.requestUpdate();
+  }
+
+  protected willUpdate(changedProperties: PropertyValues<this>): void {
+    if (!changedProperties.has("hass")) {
+      return;
+    }
+    const childId = this.hass && this.config
+      ? getConfiguredChildId(this.hass, this.config)
+      : undefined;
+    if (childId) {
+      const entityPoints = getWeeklyPoints(
+        this.hass!,
+        childId,
+        this.config?.weekly_points_entity ?? this.config?.child_entity,
+      );
+      if (entityPoints === this.confirmedPoints) {
+        this.confirmedPoints = undefined;
+      }
+      this.loadWeeklyPoints(childId);
+    }
   }
 
   getCardSize(): number {
@@ -102,11 +142,12 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
       return nothing;
     }
 
-    const points = getWeeklyPoints(
+    const entityPoints = getWeeklyPoints(
       this.hass,
       childId,
       this.config.weekly_points_entity ?? this.config.child_entity,
     ) ?? 0;
+    const points = this.confirmedPoints ?? entityPoints;
     const assignments = getAssignments(this.hass, childId);
     const rewards = [...(this.config.rewards ?? [])].sort(
       (left, right) => left.points - right.points,
@@ -123,16 +164,26 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     const buttons = this.buttons().filter((button) => this.isVisible(button));
 
     return html`
-      <ha-card>
-        ${this.config.show_person !== false || this.config.show_name !== false
+      <ha-card class=${this.config.show_border === false ? "borderless" : ""}>
+        ${this.config.show_person !== false || this.config.show_name !== false || this.config.show_previous_week !== false
           ? html`
-              <header class="position-${position}">
+              <header>
+                <div class="overview-heading">
+                  ${this.config.show_name !== false ? html`<h1>${name}</h1>` : html`<span></span>`}
+                  ${this.config.show_previous_week !== false && this.weeklyPoints
+                    ? html`<span class="previous-week">
+                        ${localize("previous_week", this.config.locale, this.hass)} ·
+                        ${this.weeklyPoints.previous_week.points}
+                      </span>`
+                    : nothing}
+                </div>
                 ${this.config.show_person !== false
-                  ? portrait
-                    ? html`<img class="portrait size-${size}" src=${portrait} alt="" />`
-                    : html`<ha-icon class="portrait-icon size-${size}" icon="mdi:account-circle"></ha-icon>`
+                  ? html`<div class="portrait-row position-${position}">
+                      ${portrait
+                        ? html`<img class="portrait size-${size}" src=${portrait} alt="" />`
+                        : html`<ha-icon class="portrait-icon size-${size}" icon="mdi:account-circle"></ha-icon>`}
+                    </div>`
                   : nothing}
-                ${this.config.show_name !== false ? html`<h1>${name}</h1>` : nothing}
               </header>
             `
           : nothing}
@@ -148,6 +199,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
         <div class="progress" style=${"background: " + this.progressTrackColor(progressColor)} role="progressbar" aria-valuemin="0" aria-valuemax=${goal} aria-valuenow=${points}>
           <span style=${`width: ${progress}%; background: ${progressColor}`}></span>
         </div>
+        ${this.renderCompactAdjustment(childId)}
         ${buttons.length
           ? html`
               <div class="button-divider"></div>
@@ -161,6 +213,122 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
           : nothing}
       </ha-card>
     `;
+  }
+
+  private renderCompactAdjustment(childId: string) {
+    const showAdjustments = this.config?.show_adjustments !== false;
+    if (this.weeklyPointsError) {
+      return html`
+        <p class="api-error" role="alert">
+          ${localize("weekly_points_error", this.config?.locale, this.hass)}
+        </p>
+      `;
+    }
+    if (
+      !showAdjustments ||
+      !this.weeklyPoints ||
+      this.weeklyPoints.child_id !== childId ||
+      !this.weeklyPoints.can_adjust
+    ) {
+      return nothing;
+    }
+    const currentPoints = this.confirmedPoints ?? this.weeklyPoints.current_week.points;
+
+    return html`
+      <section class="compact-adjustment">
+        <span class="adjustment-label">
+          <ha-icon icon="mdi:tune-variant"></ha-icon>
+          ${localize("adjust", this.config?.locale, this.hass)}
+        </span>
+        <div class="adjustment-actions">
+          <button
+            class="subtract"
+            ?disabled=${this.adjustmentPending || currentPoints <= 0}
+            aria-label=${localize("subtract_points", this.config?.locale, this.hass)}
+            @click=${() => this.adjustPoints(childId, -1)}
+          ><ha-icon icon="mdi:minus"></ha-icon><span>1</span></button>
+          <button
+            class="add"
+            ?disabled=${this.adjustmentPending}
+            aria-label=${localize("add_points", this.config?.locale, this.hass)}
+            @click=${() => this.adjustPoints(childId, 1)}
+          ><ha-icon icon="mdi:plus"></ha-icon><span>1</span></button>
+        </div>
+        ${this.adjustmentError
+          ? html`<p class="api-error" role="alert">
+              ${localize("adjustment_error", this.config?.locale, this.hass)}
+            </p>`
+          : nothing}
+      </section>
+    `;
+  }
+
+  private loadWeeklyPoints(childId: string): void {
+    const connection = this.hass?.connection;
+    if (!connection) {
+      return;
+    }
+    if (
+      childId === this.weeklyPointsChildId &&
+      connection === this.weeklyPointsConnection
+    ) {
+      return;
+    }
+    this.weeklyPointsChildId = childId;
+    this.weeklyPointsConnection = connection;
+    this.weeklyPoints = undefined;
+    this.weeklyPointsError = false;
+    void connection
+      .sendMessagePromise<WeeklyPointsResponse>({
+        type: "chores_manager/weekly_points",
+        child_id: childId,
+      })
+      .then((response) => {
+        if (
+          this.weeklyPointsChildId === childId &&
+          this.weeklyPointsConnection === connection
+        ) {
+          this.weeklyPoints = response;
+        }
+      })
+      .catch(() => {
+        if (
+          this.weeklyPointsChildId === childId &&
+          this.weeklyPointsConnection === connection
+        ) {
+          this.weeklyPointsError = true;
+        }
+      });
+  }
+
+  private async adjustPoints(childId: string, direction: -1 | 1): Promise<void> {
+    const connection = this.hass?.connection;
+    if (!connection || this.adjustmentPending) {
+      return;
+    }
+    this.adjustmentPending = true;
+    this.adjustmentError = false;
+    try {
+      const response = await connection.sendMessagePromise<WeeklyPointsAdjustmentResponse>({
+        type: "chores_manager/adjust_weekly_points",
+        child_id: childId,
+        amount: direction,
+      });
+      this.confirmedPoints = response.current_points;
+      if (this.weeklyPoints?.child_id === childId) {
+        this.weeklyPoints = {
+          ...this.weeklyPoints,
+          current_week: {
+            ...this.weeklyPoints.current_week,
+            points: response.current_points,
+          },
+        };
+      }
+    } catch {
+      this.adjustmentError = true;
+    } finally {
+      this.adjustmentPending = false;
+    }
   }
 
   private renderPointsAndRewards(assignments: ChoreAssignment[], rewards: RewardTier[]) {
@@ -224,6 +392,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
         @dblclick=${(event: MouseEvent) => this.handleDoubleClick(event, actions)}
       >
         <ha-icon icon=${button.icon}></ha-icon><span>${button.label}</span>
+        <small>${localize("show", this.config?.locale, this.hass)}</small>
       </button>
     `;
   }
@@ -369,10 +538,15 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
 
   static styles = css`
     :host { display: block; }
+    ha-card.borderless { border: 0; }
     ha-card { padding: 20px; }
-    header { display: flex; align-items: center; gap: 12px; }
-    header.position-center { flex-direction: column; text-align: center; }
-    header.position-right { flex-direction: row-reverse; text-align: right; }
+    header { display:grid; gap:18px; }
+    .overview-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .previous-week { color:var(--secondary-text-color); font-size:14px; white-space:nowrap; }
+    .portrait-row { display:flex; }
+    .portrait-row.position-left { justify-content:flex-start; }
+    .portrait-row.position-center { justify-content:center; }
+    .portrait-row.position-right { justify-content:flex-end; }
     .portrait { border-radius: 50%; object-fit: cover; }
     .portrait-icon { color: var(--state-icon-color); }
     .size-small { width: 40px; height: 40px; }
@@ -390,12 +564,23 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     p { margin: 3px 0 0; color: var(--secondary-text-color); font-size: 14px; }
     .progress { height: 6px; background: var(--secondary-background-color); overflow: hidden; }
     .progress span { display: block; height: 100%; transition: width 180ms ease-out, background 180ms ease-out; }
+    .compact-adjustment { display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-top:24px; }
+    .adjustment-label { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; }
+    .adjustment-label ha-icon { --mdc-icon-size:20px; }
+    .adjustment-actions { display:flex; gap:8px; }
+    .adjustment-actions button { min-width:54px; min-height:40px; padding:6px 10px; display:flex; grid-auto-flow:column; border-radius:22px; }
+    .adjustment-actions button span { font-size:13px; }
+    .adjustment-actions .subtract ha-icon { color: var(--error-color, #db4437); }
+    .adjustment-actions .add ha-icon { color: var(--success-color, #43a047); }
+    .compact-adjustment button:disabled { cursor:default; opacity:.45; }
+    .api-error { color: var(--error-color, #db4437); }
     .button-divider { height: 6px; margin: 26px 0 20px; background: var(--secondary-background-color); border-radius: 3px; }
     .actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
     button { min-height: 72px; padding: 8px; display: grid; place-items: center; gap: 5px; border: 1px solid var(--divider-color); border-radius: 8px; background: transparent; color: var(--primary-text-color); font: inherit; cursor: pointer; }
     button:hover { background: var(--secondary-background-color); }
     button ha-icon { color: var(--button-icon-color, var(--state-icon-color)); }
     button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+    button small { color:var(--secondary-text-color); font-size:12px; }
     .points-rewards { margin-top: 20px; }
     summary { cursor: pointer; }
     summary span { font-size: 20px; font-weight: 600; }
@@ -404,6 +589,10 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     li + li { margin-top: 4px; }
     .reward-list { margin-bottom: 0; }
     .rewards-content section + section { margin-top: 20px; }
+    @media (max-width: 480px) {
+      ha-card { padding: 16px; }
+      .compact-adjustment { gap:10px; }
+    }
   `;
 }
 

@@ -14,3 +14,18 @@ The files in `/workspaces/card resources` are household-specific migration refer
 | reset, audit, and notification automations | Outside this card package |
 
 The legacy overview contains manual `-1/+1` counter changes and a previous-week total. These capabilities are the next card milestone and will use the latest Chores Manager audited-adjustment and previous-week read APIs rather than legacy helpers.
+
+## Correction popup reference
+
+The household correction view used Bubble Card as a popup shell around a custom
+correction card. Its YAML selected one person and child, displayed a counter in the
+header, navigated through an `input_datetime`, grouped explicitly listed
+`input_boolean` helpers into Morning, Dinner, Cat, and Other sections, and delegated
+changes to a correction script.
+
+The dedicated correction-card milestone should preserve the compact portrait/name and
+point header, date navigation, category grouping, and large add/remove targets shown in
+the reference images. It must derive children, assignments, categories, icons, points,
+dates, and completion state from Chores Manager's inventory and correction WebSocket
+contracts. Bubble Card, counters, input datetimes, input booleans, summary sensors, and
+correction scripts remain migration references rather than runtime dependencies.

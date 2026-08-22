@@ -18,6 +18,72 @@ const hass: HomeAssistant = {
 };
 
 describe("dynamic Chores Manager editor", () => {
+  it("supports correction-card configuration with real child choices", async () => {
+    const editor = document.createElement("chores-manager-correction-card-editor") as HTMLElement & {
+      hass: HomeAssistant;
+      setConfig(config: Record<string, unknown>): void;
+    };
+    editor.hass = hass;
+    editor.setConfig({ child_id: "kid_28", show_header: true });
+    document.body.append(editor);
+    await (editor as unknown as { updateComplete: Promise<void> }).updateComplete;
+
+    const form = editor.shadowRoot?.querySelector("ha-form") as HTMLElement & {
+      schema: Array<Record<string, unknown>>;
+      data: Record<string, unknown>;
+    };
+    expect(form).toBeTruthy();
+    expect(form.data.show_header).toBe(true);
+    expect(form.data.show_border).toBe(true);
+    expect(form.data).not.toHaveProperty("show_name");
+    expect(form.data).not.toHaveProperty("show_person");
+    expect(form.data).not.toHaveProperty("show_points");
+    expect(form.schema[0]).toMatchObject({
+      name: "child_id",
+      selector: { select: { options: [{ label: "Alex", value: "kid_28" }] } },
+    });
+    expect(form.schema.some((item) => item.name === "weekly_points_entity")).toBe(false);
+    expect(form.schema.map((item) => item.name)).toEqual([
+      "child_id",
+      "name",
+      "person_entity",
+      "locale",
+      "display",
+    ]);
+    expect(form.schema.at(-1)).toMatchObject({
+      name: "display",
+      schema: expect.arrayContaining([expect.objectContaining({ name: "show_border" })]),
+    });
+
+    const changed = new Promise<Record<string, unknown>>((resolve) => {
+      editor.addEventListener("config-changed", (event) => {
+        resolve((event as CustomEvent<{ config: Record<string, unknown> }>).detail.config);
+      }, { once: true });
+    });
+    form.dispatchEvent(new CustomEvent("value-changed", {
+      bubbles: true,
+      composed: true,
+      detail: {
+        value: {
+          child_id: "kid_28",
+          name: "Alex chores",
+          person_entity: "person.alex",
+          locale: "sv",
+          show_border: false,
+          show_header: false,
+        },
+      },
+    }));
+    await expect(changed).resolves.toEqual({
+      child_id: "kid_28",
+      name: "Alex chores",
+      person_entity: "person.alex",
+      locale: "sv",
+      show_border: false,
+      show_header: false,
+    });
+  });
+
   it("uses Home Assistant ha-form controls with child metadata choices", async () => {
     const editor = document.createElement("chores-manager-daily-card-editor") as HTMLElement & {
       hass: HomeAssistant;
@@ -34,6 +100,7 @@ describe("dynamic Chores Manager editor", () => {
     };
     expect(form).toBeTruthy();
     expect(form.data.show_header).toBe(true);
+    expect(form.data.show_border).toBe(true);
     expect(form.data.show_points).toBe(true);
     expect(form.data.weekly_points_entity).toBe("sensor.kid_28_weekly_points");
     expect(form.schema[0]).toMatchObject({
@@ -55,7 +122,11 @@ describe("dynamic Chores Manager editor", () => {
 
     const form = editor.shadowRoot?.querySelector("ha-form") as HTMLElement & {
       schema: Array<Record<string, unknown>>;
+      data: Record<string, unknown>;
     };
+    expect(form.data.show_previous_week).toBe(true);
+    expect(form.data.show_adjustments).toBe(true);
+    expect(form.data.show_border).toBe(true);
     const display = form.schema.find((item) => item.name === "display") as {
       schema: Array<{ name: string; selector: { select?: { mode?: string } } }>;
     };
@@ -65,6 +136,9 @@ describe("dynamic Chores Manager editor", () => {
         display.schema.find((item) => item.name === name);
       expect(field).toMatchObject({ selector: { select: { mode: "dropdown" } } });
     }
+    expect(display.schema.map((item) => item.name)).toEqual(
+      expect.arrayContaining(["show_border", "show_previous_week", "show_adjustments"]),
+    );
   });
 
 describe("button visibility editor", () => {

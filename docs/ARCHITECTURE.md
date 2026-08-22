@@ -14,9 +14,10 @@ This lets a child use the cards without admin WebSocket access. Entity visibilit
 
 ## Parent and admin cards
 
-- The next milestone adds audited manual point adjustments and previous-week totals using the latest Chores Manager backend APIs.
+- The overview card reads current/previous totals from `chores_manager/weekly_points` and renders adjustment controls only when its backend `can_adjust` capability is true.
+- Manual changes use `chores_manager/adjust_weekly_points` and display the backend-confirmed result; the integration owns authorization and audit storage.
 - History will use the Chores Manager current-week completion command after the backend provides parent-user authorization.
-- A dedicated correction card will use the existing admin-only inventory and correction WebSocket commands.
+- The dedicated correction card uses the existing admin-only inventory and correction WebSocket commands and can be embedded in a Bubble Card popup without depending on Bubble Card.
 - UI visibility is never a security boundary.
 
 ## Presentation
