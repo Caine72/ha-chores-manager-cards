@@ -3,7 +3,7 @@ import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { HISTORY_CARD_TYPE } from "./const";
-import { getChildren, getEntityPicture, getWeeklyPointsUpdateKey } from "./data";
+import { getAssociatedPersonEntity, getChildren, getEntityPicture, getWeeklyPointsUpdateKey } from "./data";
 import { localize, resolveLocale } from "./localize";
 import type {
   CompletionSnapshot,
@@ -64,7 +64,12 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
     if (!this.hass || !this.config) {
       return nothing;
     }
-    const portrait = getEntityPicture(this.hass, this.config.person_entity);
+    const portrait = getEntityPicture(
+      this.hass,
+      this.config.person_entity ??
+        this.history?.person_entity_id ??
+        getAssociatedPersonEntity(this.hass, this.config.child_id),
+    );
     const title = this.config.name ?? localize("weekly_chores", this.config.locale, this.hass);
 
     return html`

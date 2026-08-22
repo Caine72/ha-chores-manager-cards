@@ -10,6 +10,7 @@ import { ChoresManagerBaseCard } from "./base-card";
 import { OVERVIEW_CARD_TYPE } from "./const";
 import {
   getAssignments,
+  getAssociatedPersonEntity,
   getChildName,
   getConfiguredChildId,
   getEntityPicture,
@@ -157,7 +158,12 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     const nextReward = this.nextReward(points, rewards);
     const goal =
       nextReward?.points ?? rewards.at(-1)?.points ?? this.config.goal_points ?? 20;
-    const portrait = getEntityPicture(this.hass, this.config.person_entity);
+    const portrait = getEntityPicture(
+      this.hass,
+      this.config.person_entity ??
+        this.weeklyPoints?.person_entity_id ??
+        getAssociatedPersonEntity(this.hass, childId),
+    );
     const name = this.config.name ?? getChildName(this.hass, childId) ?? childId;
     const position = this.config.person_position ?? "left";
     const size = this.config.person_size ?? "medium";

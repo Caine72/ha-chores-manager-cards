@@ -186,6 +186,22 @@ export function getEntityPicture(
   return person ? attribute<string>(person, "entity_picture") : undefined;
 }
 
+export function getAssociatedPersonEntity(
+  hass: HomeAssistant,
+  childId: string,
+): string | undefined {
+  for (const entity of Object.values(hass.states)) {
+    if (attribute<string>(entity, "child_id") !== childId) {
+      continue;
+    }
+    const personEntityId = attribute<unknown>(entity, "person_entity_id");
+    if (typeof personEntityId === "string" && personEntityId.startsWith("person.")) {
+      return personEntityId;
+    }
+  }
+  return undefined;
+}
+
 export function groupAssignments(
   assignments: ChoreAssignment[],
 ): Map<string, ChoreAssignment[]> {

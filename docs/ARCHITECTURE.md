@@ -22,4 +22,4 @@ This lets a child use the cards without admin WebSocket access. Entity visibilit
 
 ## Presentation
 
-Cards render independently. Bubble Card may wrap a card, but it is not imported or required. Overview action tiles use standard Home Assistant actions so a dashboard chooses navigation or popup presentation.
+Cards render independently. A child may carry an optional integration-owned `person_entity_id`; cards resolve its current `entity_picture` from visible Home Assistant state, while card YAML may override the Person. The integration stores no image files and the association never grants access. Bubble Card may wrap a card, but it is not imported or required. Overview action tiles use standard Home Assistant actions so a dashboard chooses navigation or popup presentation.

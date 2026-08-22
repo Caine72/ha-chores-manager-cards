@@ -11,6 +11,7 @@ function response(
   return {
     child_id: "kid_1",
     child_name: "Alex",
+    person_entity_id: "person.alex",
     points_entity_id: "sensor.kid_1_weekly_points",
     window: { start: "2026-08-21", end: "2026-08-27" },
     completions,
@@ -60,6 +61,10 @@ function apiHass(history: CurrentWeekHistoryResponse): {
           state: "home",
           attributes: { entity_picture: "/local/alex.jpg" },
         },
+        "person.override": {
+          state: "home",
+          attributes: { entity_picture: "/local/override.jpg" },
+        },
       },
       language: "sv",
       connection: { sendMessagePromise: send as SendMessagePromise },
@@ -86,7 +91,7 @@ describe("Chores Manager history card", () => {
     ]));
     const card = new ChoresManagerHistoryCard();
     card.hass = hass;
-    card.setConfig({ child_id: "kid_1", person_entity: "person.alex" });
+    card.setConfig({ child_id: "kid_1" });
     document.body.append(card);
     await settle(card);
 
@@ -129,6 +134,19 @@ describe("Chores Manager history card", () => {
     expect(card.shadowRoot?.querySelector("header")).toBeNull();
     expect(card.shadowRoot?.querySelector("li")?.textContent?.trim()).toBe("Ge katten mat");
     expect(card.shadowRoot?.querySelector(".total")).toBeNull();
+  });
+
+  it("lets card YAML override the Person associated by the integration", async () => {
+    const { hass } = apiHass(response([]));
+    const card = new ChoresManagerHistoryCard();
+    card.hass = hass;
+    card.setConfig({ child_id: "kid_1", person_entity: "person.override" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector("img")?.getAttribute("src")).toBe(
+      "/local/override.jpg",
+    );
   });
 
   it("renders localized empty and failure states", async () => {

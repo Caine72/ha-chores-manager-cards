@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   findPersonForChild,
+  getAssociatedPersonEntity,
   getAssignments,
   getChildren,
   getConfiguredChildId,
@@ -45,11 +46,15 @@ const hass = {
     },
     "sensor.kid_1_weekly_points": {
       state: "3",
-      attributes: { child_id: "kid_1", child_name: "Alex" },
+      attributes: {
+        child_id: "kid_1",
+        child_name: "Alex",
+        person_entity_id: "person.alex",
+      },
     },
     "person.alex": {
       state: "home",
-      attributes: { friendly_name: "Alex" },
+      attributes: { friendly_name: "Alex", entity_picture: "/local/alex.jpg" },
     },
   },
   callService: async () => undefined,
@@ -92,5 +97,10 @@ describe("Chores Manager state adapter", () => {
   it("discovers child names and infers a matching person", () => {
     expect(getChildren(hass)).toContainEqual({ id: "kid_1", name: "Alex" });
     expect(findPersonForChild(hass, "Alex")).toBe("person.alex");
+  });
+
+  it("resolves the Person explicitly associated with a child", () => {
+    expect(getAssociatedPersonEntity(hass, "kid_1")).toBe("person.alex");
+    expect(getAssociatedPersonEntity(hass, "kid_2")).toBeUndefined();
   });
 });

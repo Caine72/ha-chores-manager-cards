@@ -40,6 +40,7 @@ export interface WeeklyPointsPeriod {
 export interface WeeklyPointsResponse {
   child_id: string;
   child_name: string;
+  person_entity_id?: string;
   points_entity_id: string;
   can_adjust: boolean;
   current_week: WeeklyPointsPeriod;
@@ -58,6 +59,7 @@ export interface WeeklyPointsAdjustmentResponse {
 export interface InventoryChild {
   child_id: string;
   name: string;
+  person_entity_id?: string;
   active: boolean;
   points_entity_id: string | null;
 }
@@ -110,6 +112,7 @@ export interface CurrentWeekCompletionsResponse {
 export interface CurrentWeekHistoryResponse extends CurrentWeekCompletionsResponse {
   child_id: string;
   child_name: string;
+  person_entity_id?: string;
   points_entity_id: string;
 }
 
