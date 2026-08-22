@@ -142,6 +142,22 @@ export function getWeeklyPoints(
   return Number.isFinite(points) ? points : undefined;
 }
 
+export function getWeeklyPointsWeekStart(
+  hass: HomeAssistant,
+  childId: string,
+  weeklyPointsEntity?: string,
+): string | undefined {
+  const entity =
+    (weeklyPointsEntity ? hass.states[weeklyPointsEntity] : undefined) ??
+    Object.entries(hass.states).find(
+      ([entityId, candidate]) =>
+        entityId.startsWith("sensor.") &&
+        attribute<string>(candidate, "child_id") === childId,
+    )?.[1];
+  const weekStart = entity ? attribute<unknown>(entity, "week_start") : undefined;
+  return typeof weekStart === "string" ? weekStart : undefined;
+}
+
 export function getEntityPicture(
   hass: HomeAssistant,
   personEntityId: string | undefined,

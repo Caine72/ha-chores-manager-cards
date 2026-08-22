@@ -5,7 +5,11 @@ import type { HomeAssistant } from "./types";
 
 type SendMessagePromise = NonNullable<HomeAssistant["connection"]>["sendMessagePromise"];
 
-function createHass(points: number, includeExtraChore = false): HomeAssistant {
+function createHass(
+  points: number,
+  includeExtraChore = false,
+  weekStart = "2026-08-15",
+): HomeAssistant {
   return {
     states: {
       "switch.kid_28_make_bed": {
@@ -47,7 +51,7 @@ function createHass(points: number, includeExtraChore = false): HomeAssistant {
         : {}),
       "sensor.kid_28_weekly_points": {
         state: String(points),
-        attributes: { child_id: "kid_28", kid_name: "Alex" },
+        attributes: { child_id: "kid_28", kid_name: "Alex", week_start: weekStart },
       },
     },
     callService: vi.fn<HomeAssistant["callService"]>(),
@@ -191,6 +195,44 @@ describe("Chores Manager overview card", () => {
 });
 
 describe("weekly points API", () => {
+  it("reloads backend week totals when the sensor week boundary changes", async () => {
+    let reads = 0;
+    const sendMessagePromise = vi.fn(async () => {
+      reads += 1;
+      return {
+        child_id: "kid_28",
+        child_name: "Alex",
+        points_entity_id: "sensor.kid_28_weekly_points",
+        can_adjust: true,
+        current_week: {
+          start: reads === 1 ? "2026-08-15" : "2026-08-21",
+          end: reads === 1 ? "2026-08-21" : "2026-08-27",
+          points: 4,
+        },
+        previous_week: {
+          start: reads === 1 ? "2026-08-08" : "2026-08-14",
+          end: reads === 1 ? "2026-08-14" : "2026-08-20",
+          points: reads === 1 ? 12 : 7,
+        },
+      };
+    }) as SendMessagePromise;
+    const initialHass = createApiHass(true, sendMessagePromise);
+    const card = new ChoresManagerOverviewCard();
+    card.hass = initialHass;
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await settle(card);
+
+    card.hass = {
+      ...initialHass,
+      states: createHass(4, false, "2026-08-21").states,
+    };
+    await settle(card);
+
+    expect(sendMessagePromise).toHaveBeenCalledTimes(2);
+    expect(card.shadowRoot?.querySelector(".previous-week")?.textContent).toContain("7");
+  });
+
   it("disables subtraction when the backend-confirmed total is zero", async () => {
     const sendMessagePromise = vi.fn(async (message: Record<string, unknown>) => {
       if (message.type === "chores_manager/weekly_points") {

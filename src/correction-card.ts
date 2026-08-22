@@ -3,7 +3,7 @@ import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { CORRECTION_CARD_TYPE } from "./const";
-import { getChildren, getEntityPicture } from "./data";
+import { getChildren, getEntityPicture, getWeeklyPointsWeekStart } from "./data";
 import { localize, resolveLocale } from "./localize";
 import type {
   CompletionSnapshot,
@@ -36,6 +36,7 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
   @state() private dateInputReady = Boolean(customElements.get("ha-date-input"));
   private requestChildId?: string;
   private requestConnection?: HomeAssistant["connection"];
+  private requestWeekStart?: string;
 
   static getConfigElement() {
     return document.createElement("chores-manager-correction-card-editor");
@@ -227,20 +228,30 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
     if (!connection || !childId) {
       return;
     }
+    const weekStart = getWeeklyPointsWeekStart(this.hass!, childId);
     if (
       childId === this.requestChildId &&
-      connection === this.requestConnection
+      connection === this.requestConnection &&
+      weekStart === this.requestWeekStart
     ) {
       return;
     }
     this.requestChildId = childId;
     this.requestConnection = connection;
+    this.requestWeekStart = weekStart;
     this.error = undefined;
     void Promise.all([
       connection.sendMessagePromise<InventoryResponse>({ type: "chores_manager/inventory" }),
       connection.sendMessagePromise<CurrentWeekCompletionsResponse>({ type: "chores_manager/current_week_completions" }),
     ])
       .then(async ([inventory, history]) => {
+        if (
+          this.requestChildId !== childId ||
+          this.requestConnection !== connection ||
+          this.requestWeekStart !== weekStart
+        ) {
+          return;
+        }
         this.inventory = inventory;
         this.history = history;
         if (!inventory.children.some((child) => child.child_id === childId)) {
@@ -251,13 +262,26 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
           type: "chores_manager/weekly_points",
           child_id: childId,
         });
+        if (
+          this.requestChildId !== childId ||
+          this.requestConnection !== connection ||
+          this.requestWeekStart !== weekStart
+        ) {
+          return;
+        }
         this.weeklyPoints = weeklyPoints;
         this.selectedDate = this.selectedDate && this.selectedDate >= history.window.start && this.selectedDate <= history.window.end
           ? this.selectedDate
           : history.window.end;
       })
       .catch(() => {
-        this.error = "load_failed";
+        if (
+          this.requestChildId === childId &&
+          this.requestConnection === connection &&
+          this.requestWeekStart === weekStart
+        ) {
+          this.error = "load_failed";
+        }
       });
   }
 

@@ -14,6 +14,7 @@ import {
   getConfiguredChildId,
   getEntityPicture,
   getWeeklyPoints,
+  getWeeklyPointsWeekStart,
 } from "./data";
 import { localize } from "./localize";
 import type {
@@ -57,6 +58,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
   @state() private confirmedPoints?: number;
   private weeklyPointsChildId?: string;
   private weeklyPointsConnection?: HomeAssistant["connection"];
+  private weeklyPointsWeekStart?: string;
   private readonly heldButtons = new WeakSet<HTMLButtonElement>();
   private readonly holdTimers = new WeakMap<HTMLButtonElement, number>();
   private readonly clickTimers = new WeakMap<HTMLButtonElement, number>();
@@ -268,14 +270,21 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     if (!connection) {
       return;
     }
+    const weekStart = getWeeklyPointsWeekStart(
+      this.hass!,
+      childId,
+      this.config?.weekly_points_entity ?? this.config?.child_entity,
+    );
     if (
       childId === this.weeklyPointsChildId &&
-      connection === this.weeklyPointsConnection
+      connection === this.weeklyPointsConnection &&
+      weekStart === this.weeklyPointsWeekStart
     ) {
       return;
     }
     this.weeklyPointsChildId = childId;
     this.weeklyPointsConnection = connection;
+    this.weeklyPointsWeekStart = weekStart;
     this.weeklyPoints = undefined;
     this.weeklyPointsError = false;
     void connection
@@ -286,7 +295,8 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
       .then((response) => {
         if (
           this.weeklyPointsChildId === childId &&
-          this.weeklyPointsConnection === connection
+          this.weeklyPointsConnection === connection &&
+          this.weeklyPointsWeekStart === weekStart
         ) {
           this.weeklyPoints = response;
         }
@@ -294,7 +304,8 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
       .catch(() => {
         if (
           this.weeklyPointsChildId === childId &&
-          this.weeklyPointsConnection === connection
+          this.weeklyPointsConnection === connection &&
+          this.weeklyPointsWeekStart === weekStart
         ) {
           this.weeklyPointsError = true;
         }

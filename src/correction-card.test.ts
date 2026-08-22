@@ -5,7 +5,14 @@ import type { HomeAssistant } from "./types";
 
 type SendMessagePromise = NonNullable<HomeAssistant["connection"]>["sendMessagePromise"];
 
-function apiHass(): { hass: HomeAssistant; send: ReturnType<typeof vi.fn> } {
+function apiHass(): {
+  hass: HomeAssistant;
+  send: ReturnType<typeof vi.fn>;
+  setWeekStart: (weekStart: string) => void;
+} {
+  let weekStart = "2026-08-15";
+  const weekEnd = () => weekStart === "2026-08-21" ? "2026-08-27" : "2026-08-21";
+  const windowEnd = () => weekStart === "2026-08-21" ? "2026-08-22" : "2026-08-17";
   const send = vi.fn(async (message: Record<string, unknown>) => {
     switch (message.type) {
       case "chores_manager/inventory":
@@ -21,11 +28,11 @@ function apiHass(): { hass: HomeAssistant; send: ReturnType<typeof vi.fn> } {
             { assignment_id: "assignment_2", child_id: "kid_1", chore_id: "chore_2", active: true, switch_expected: true, switch_entity_id: "switch.two" },
             { assignment_id: "assignment_3", child_id: "kid_1", chore_id: "chore_3", active: true, switch_expected: true, switch_entity_id: "switch.three" },
           ],
-          week: { start: "2026-08-15", end: "2026-08-21" },
+          week: { start: weekStart, end: weekEnd() },
         };
       case "chores_manager/current_week_completions":
         return {
-          window: { start: "2026-08-15", end: "2026-08-17" },
+          window: { start: weekStart, end: windowEnd() },
           completions: [
             {
               completion_id: "completion_1",
@@ -48,7 +55,7 @@ function apiHass(): { hass: HomeAssistant; send: ReturnType<typeof vi.fn> } {
           child_name: "Alex",
           points_entity_id: "sensor.kid_1_weekly_points",
           can_adjust: true,
-          current_week: { start: "2026-08-15", end: "2026-08-21", points: 2 },
+          current_week: { start: weekStart, end: weekEnd(), points: 2 },
           previous_week: { start: "2026-08-08", end: "2026-08-14", points: 10 },
         };
       case "chores_manager/set_current_week_completion":
@@ -68,7 +75,7 @@ function apiHass(): { hass: HomeAssistant; send: ReturnType<typeof vi.fn> } {
       states: {
         "sensor.kid_1_weekly_points": {
           state: "2",
-          attributes: { child_id: "kid_1", kid_name: "Alex" },
+          attributes: { child_id: "kid_1", kid_name: "Alex", week_start: weekStart },
         },
       },
       language: "sv",
@@ -77,6 +84,9 @@ function apiHass(): { hass: HomeAssistant; send: ReturnType<typeof vi.fn> } {
       callService: async () => undefined,
     },
     send,
+    setWeekStart: (value: string) => {
+      weekStart = value;
+    },
   };
 }
 
@@ -92,6 +102,43 @@ afterEach(() => {
 });
 
 describe("Chores Manager correction card", () => {
+  it("reloads the correction window when the backend week boundary changes", async () => {
+    const { hass, send, setWeekStart } = apiHass();
+    const card = new ChoresManagerCorrectionCard();
+    card.hass = hass;
+    card.setConfig({ child_id: "kid_1" });
+    document.body.append(card);
+    await settle(card);
+
+    setWeekStart("2026-08-21");
+    card.hass = {
+      ...hass,
+      states: {
+        ...hass.states,
+        "sensor.kid_1_weekly_points": {
+          ...hass.states["sensor.kid_1_weekly_points"],
+          attributes: {
+            ...hass.states["sensor.kid_1_weekly_points"].attributes,
+            week_start: "2026-08-21",
+          },
+        },
+      },
+    };
+    await settle(card);
+
+    expect(send.mock.calls.filter(([message]) =>
+      (message as Record<string, unknown>).type === "chores_manager/current_week_completions"
+    )).toHaveLength(2);
+    const dateInput = card.shadowRoot?.querySelector("ha-date-input") as HTMLElement & {
+      value: string;
+      min: string;
+      max: string;
+    };
+    expect(dateInput.min).toBe("2026-08-21");
+    expect(dateInput.max).toBe("2026-08-22");
+    expect(dateInput.value).toBe("2026-08-22");
+  });
+
   it("loads Home Assistant's standard date input through card helpers", async () => {
     const importMoreInfoControl = vi.fn();
     (window as Window & {

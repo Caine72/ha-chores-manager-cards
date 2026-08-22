@@ -80,7 +80,7 @@ buttons:
       navigation_path: /dashboard-chores/correction
 ```
 
-The visual editor provides a child-name dropdown and a separate Chores Manager weekly-points entity selector. Selecting a child automatically preselects its weekly-points sensor. `child_id` is the current YAML field; legacy `child_entity` remains supported. `show_previous_week` displays the retained previous complete Saturday-Friday total in the header. `show_adjustments` enables compact `-1` and `+1` controls only when the backend reports that the signed-in Home Assistant user controls the selected weekly-points sensor. Each response immediately displays the backend-confirmed total. The backend API also supports larger audited amounts and optional reasons for other clients and automations.
+The visual editor provides a child-name dropdown and a separate Chores Manager weekly-points entity selector. Selecting a child automatically preselects its weekly-points sensor. `child_id` is the current YAML field; legacy `child_entity` remains supported. `show_previous_week` displays the previous complete total using the backend-configured chore-week boundary. The overview and correction cards reload their API data when that boundary changes; they do not calculate a fixed reset weekday. `show_adjustments` enables compact `-1` and `+1` controls only when the backend reports that the signed-in Home Assistant user controls the selected weekly-points sensor. Each response immediately displays the backend-confirmed total. The backend API also supports larger audited amounts and optional reasons for other clients and automations.
 
 ## Correction card
 
