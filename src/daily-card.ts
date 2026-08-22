@@ -27,7 +27,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     if (!config?.child_id?.trim() && !config?.child_entity?.trim()) {
       throw new Error("child_id or child_entity is required");
     }
-    this.config = { locale: "auto", show_header: true, show_person: true, show_points: true, ...config };
+    this.config = { locale: "auto", show_border: true, show_header: true, show_person: true, show_points: true, ...config };
     this.requestUpdate();
   }
 
@@ -73,7 +73,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
       localize("chores", this.config.locale, this.hass);
 
     return html`
-      <ha-card>
+      <ha-card class=${this.config.show_border === false ? "borderless" : ""}>
         ${this.config.show_header !== false
           ? html`
               <header>
@@ -182,6 +182,7 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
 
   static styles = css`
     :host { display: block; }
+    ha-card.borderless { border: 0; }
     ha-card { padding: 20px; }
     header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
     .portrait { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; }

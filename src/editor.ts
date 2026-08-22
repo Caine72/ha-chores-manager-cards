@@ -4,14 +4,15 @@ import { customElement, property, state } from "lit/decorators.js";
 import { getChildren } from "./data";
 import type {
   ButtonVisibilityMode,
+  CorrectionCardConfig,
   DailyCardConfig,
   HomeAssistant,
   OverviewButton,
   OverviewCardConfig,
 } from "./types";
 
-type EditorConfig = (DailyCardConfig | OverviewCardConfig) & { type?: string };
-type EditorKind = "daily" | "overview";
+type EditorConfig = (CorrectionCardConfig | DailyCardConfig | OverviewCardConfig) & { type?: string };
+type EditorKind = "correction" | "daily" | "overview";
 type FormValueChangedEvent<T> = CustomEvent<{ value: T }>;
 interface UserOption {
   id: string;
@@ -82,21 +83,38 @@ function legacyButtons(config: OverviewCardConfig): OverviewButton[] {
 }
 
 function defaults(config: EditorConfig, kind: EditorKind): EditorConfig {
+  if (kind === "correction") {
+    return {
+      locale: "auto",
+      show_border: true,
+      show_header: true,
+      ...config,
+    };
+  }
   const base = {
     locale: "auto" as const,
     show_header: true,
     show_name: true,
     show_person: true,
     show_points: true,
-    person_position: "left" as const,
+    show_border: true,
+    person_position: "center" as const,
     person_size: "medium" as const,
   };
-  if (kind === "overview" && (config as OverviewCardConfig).buttons === undefined) {
+  if (kind === "overview") {
     const overview = config as OverviewCardConfig;
     return {
       ...base,
+      show_previous_week: true,
+      show_adjustments: true,
       ...config,
-      buttons: legacyButtons(overview).length ? legacyButtons(overview) : BUTTON_PRESETS,
+      ...(overview.buttons === undefined
+        ? {
+            buttons: legacyButtons(overview).length
+              ? legacyButtons(overview)
+              : BUTTON_PRESETS,
+          }
+        : {}),
     };
   }
   return { ...base, ...config };
@@ -115,7 +133,7 @@ abstract class ChoresManagerCardEditor extends LitElement {
     this.config = defaults(config, this.kind);
   }
   protected willUpdate(changedProperties: PropertyValues<this>): void {
-    if (changedProperties.has("hass")) {
+    if (this.kind === "overview" && changedProperties.has("hass")) {
       this.loadUsers();
     }
   }
@@ -159,15 +177,19 @@ abstract class ChoresManagerCardEditor extends LitElement {
     if (!this.hass || !this.config) {
       return this.config ?? {};
     }
-    const childId = this.config.child_id ?? (this.config.child_entity
-      ? this.hass.states[this.config.child_entity]?.attributes.child_id
+    if (this.kind === "correction") {
+      return this.config;
+    }
+    const entityConfig = this.config as DailyCardConfig | OverviewCardConfig;
+    const childId = entityConfig.child_id ?? (entityConfig.child_entity
+      ? this.hass.states[entityConfig.child_entity]?.attributes.child_id
       : undefined);
     return typeof childId === "string"
       ? {
           ...this.config,
           child_id: childId,
           weekly_points_entity:
-            this.config.weekly_points_entity ?? this.matchingWeeklyPointsEntity(childId),
+            entityConfig.weekly_points_entity ?? this.matchingWeeklyPointsEntity(childId),
         }
       : this.config;
   }
@@ -203,6 +225,22 @@ abstract class ChoresManagerCardEditor extends LitElement {
       },
     ];
 
+    if (this.kind === "correction") {
+      return [
+        shared[0],
+        ...shared.slice(2),
+        {
+          type: "grid",
+          name: "display",
+          flatten: true,
+          schema: [
+            { name: "show_header", selector: { boolean: {} } },
+            { name: "show_border", selector: { boolean: {} } },
+          ],
+        },
+      ];
+    }
+
     if (this.kind === "daily") {
       return [
         ...shared,
@@ -212,6 +250,7 @@ abstract class ChoresManagerCardEditor extends LitElement {
           flatten: true,
           schema: [
             { name: "show_header", selector: { boolean: {} } },
+            { name: "show_border", selector: { boolean: {} } },
             { name: "show_person", selector: { boolean: {} } },
             { name: "show_points", selector: { boolean: {} } },
           ],
@@ -227,8 +266,11 @@ abstract class ChoresManagerCardEditor extends LitElement {
         flatten: true,
         schema: [
           { name: "show_name", selector: { boolean: {} } },
+          { name: "show_border", selector: { boolean: {} } },
           { name: "show_person", selector: { boolean: {} } },
           { name: "show_points", selector: { boolean: {} } },
+          { name: "show_previous_week", selector: { boolean: {} } },
+          { name: "show_adjustments", selector: { boolean: {} } },
           {
             name: "person_position",
             selector: {
@@ -359,15 +401,22 @@ abstract class ChoresManagerCardEditor extends LitElement {
   private onFormValueChanged(event: FormValueChangedEvent<EditorConfig>): void {
     event.stopPropagation();
     const value = event.detail.value;
-    const changedChild = value.child_id !== this.config?.child_id;
+    if (this.kind === "correction") {
+      this.config = defaults({ ...this.config, ...value }, this.kind);
+      this.emitConfigChanged();
+      return;
+    }
+    const entityValue = value as DailyCardConfig | OverviewCardConfig;
+    const entityConfig = this.config as DailyCardConfig | OverviewCardConfig;
+    const changedChild = entityValue.child_id !== entityConfig.child_id;
     this.config = defaults(
       {
         ...this.config,
         ...value,
         weekly_points_entity:
           changedChild && this.hass
-            ? this.matchingWeeklyPointsEntity(value.child_id)
-            : value.weekly_points_entity,
+            ? this.matchingWeeklyPointsEntity(entityValue.child_id)
+            : entityValue.weekly_points_entity,
       },
       this.kind,
     );
@@ -446,7 +495,9 @@ abstract class ChoresManagerCardEditor extends LitElement {
           person_size: "Bildstorlek", points: "Poäng", progress_color: "Förloppsfärg",
           remove_button: "Ta bort knapp", rewards: "Belöningsnivåer",
           show_header: "Visa sidhuvud", show_name: "Visa namn", show_person: "Visa bild",
+          show_border: "Visa kortkant",
           show_points: this.kind === "daily" ? "Visa poäng" : "Visa poäng och belöningsmeddelande",
+          show_previous_week: "Visa förra veckans poäng", show_adjustments: "Visa poängjustering",
           tap_action: "Tryck", visibility_mode: "Synlig för", visibility_users: "Användare",
           weekly_points_entity: "Veckopoäng",
         }
@@ -459,7 +510,9 @@ abstract class ChoresManagerCardEditor extends LitElement {
           person_size: "Picture size", points: "Points", progress_color: "Progress color",
           remove_button: "Remove button", rewards: "Reward levels",
           show_header: "Show header", show_name: "Show name", show_person: "Show picture",
+          show_border: "Show card border",
           show_points: this.kind === "daily" ? "Show points" : "Show points and reward message",
+          show_previous_week: "Show previous-week points", show_adjustments: "Show point adjustment",
           tap_action: "Tap behavior", visibility_mode: "Visible to", visibility_users: "Users",
           weekly_points_entity: "Weekly points",
         };
@@ -486,9 +539,15 @@ export class ChoresManagerOverviewCardEditor extends ChoresManagerCardEditor {
   protected readonly kind = "overview";
 }
 
+@customElement("chores-manager-correction-card-editor")
+export class ChoresManagerCorrectionCardEditor extends ChoresManagerCardEditor {
+  protected readonly kind = "correction";
+}
+
 declare global {
   interface HTMLElementTagNameMap {
     "chores-manager-daily-card-editor": ChoresManagerDailyCardEditor;
     "chores-manager-overview-card-editor": ChoresManagerOverviewCardEditor;
+    "chores-manager-correction-card-editor": ChoresManagerCorrectionCardEditor;
   }
 }

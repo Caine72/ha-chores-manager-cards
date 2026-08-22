@@ -6,7 +6,7 @@
 
 Standalone Lovelace cards for the [Chores Manager](https://github.com/Caine72/ha-chores-manager) custom integration.
 
-This project requires Chores Manager `0.3.0` or later. It does not replace the integration and it does not store household data.
+Version `0.2.0` requires Chores Manager `0.5.0` or later. It does not replace the integration and it does not store household data. Older card releases retain their documented backend requirements.
 
 > [!IMPORTANT]
 > These cards are maintained for my private Home Assistant setup. It is public so it can be installed and updated through HACS as a custom repository. Bug reports are welcome, but there is no support promise, no compatibility guarantee, and no ambition to make this a general-purpose chores platform.
@@ -15,7 +15,7 @@ This project requires Chores Manager `0.3.0` or later. It does not replace the i
 
 ## Status
 
-Version `0.1.13` provides the production-ready child-facing daily and overview cards. The next milestone adds parent/admin audited manual adjustments and previous-week totals using the latest Chores Manager backend APIs. Dedicated history and correction cards remain later milestones.
+Version `0.2.0` adds backend-authorized audited point adjustments and previous-week totals to the overview card, plus a dedicated administrator-only correction card. The history card remains a later milestone.
 
 ## Installation
 
@@ -30,6 +30,7 @@ weekly_points_entity: sensor.kid_1_weekly_points
 name: Alex
 person_entity: person.alex
 show_header: true
+show_border: true
 show_person: true
 show_points: true
 locale: auto
@@ -46,9 +47,12 @@ name: Alex
 person_entity: person.alex
 show_name: true
 show_person: true
-person_position: left
+show_border: true
+person_position: center
 person_size: medium
 show_points: true
+show_previous_week: true
+show_adjustments: true
 progress_color: "#00a6d6"
 rewards:
   - points: 20
@@ -76,7 +80,27 @@ buttons:
       navigation_path: /dashboard-chores/correction
 ```
 
-The visual editor provides a child-name dropdown and a separate Chores Manager weekly-points entity selector. Selecting a child automatically preselects its weekly-points sensor. `child_id` is the current YAML field; legacy `child_entity` remains supported. Reward levels define the progress targets. `progress_color` controls the bar before the first reward, while each optional reward `color` takes effect at that threshold. Colors accept `#RRGGBB` values and common Home Assistant names such as `amber`, `cyan`, and `purple`. The unfilled progress track is a darker shade of the active progress color. The expanded Points & rewards section lists the child's available chores grouped by points and the configured rewards. `goal_points` remains a compatibility fallback for older YAML and is not shown in the visual editor.
+The visual editor provides a child-name dropdown and a separate Chores Manager weekly-points entity selector. Selecting a child automatically preselects its weekly-points sensor. `child_id` is the current YAML field; legacy `child_entity` remains supported. `show_previous_week` displays the previous complete total using the backend-configured chore-week boundary. The overview and correction cards reload their API data when that boundary changes; they do not calculate a fixed reset weekday. `show_adjustments` enables compact `-1` and `+1` controls only when the backend reports that the signed-in Home Assistant user controls the selected weekly-points sensor. Each response immediately displays the backend-confirmed total. The backend API also supports larger audited amounts and optional reasons for other clients and automations.
+
+## Correction card
+
+```yaml
+type: custom:chores-manager-correction-card
+child_id: kid_1
+name: Alex
+person_entity: person.alex
+locale: auto
+show_header: true
+show_border: true
+```
+
+The separate administrator-only correction card is designed to sit directly in a dashboard or inside a Bubble Card popup. Set `show_header: false` when the popup wrapper already supplies its own portrait, title, points, back, and close controls. It reproduces the legacy current-week date navigation, category-grouped chore list, and circular add/remove completion controls while using Chores Manager inventory and correction WebSocket contracts. It has no helper, counter, date entity, summary sensor, or script dependency.
+
+All three cards expose `show_border` in their visual editors. Set it to `false` to remove the outer Home Assistant card border while retaining the card background and content layout.
+
+Reward levels define the progress targets. `progress_color` controls the bar before the first reward, while each optional reward `color` takes effect at that threshold. Colors accept `#RRGGBB` values and common Home Assistant names such as `amber`, `cyan`, and `purple`. The unfilled progress track is a darker shade of the active progress color. The expanded Points & rewards section lists the child's available chores grouped by points and the configured rewards. `goal_points` remains a compatibility fallback for older YAML and is not shown in the visual editor.
+
+Card visibility is not authorization. Chores Manager enforces read and control permissions against the selected child's weekly-points sensor and stores every applied manual change as an audited adjustment rather than rewriting completion history.
 
 `buttons` supports up to three configurable buttons. Each button always shows a native multi-select populated with active Home Assistant users, alongside its actions and visibility mode. User selection requires an administrator account, as required by Home Assistant’s user-list API. Legacy `daily_action`, `history_action`, and `correction_action` remain supported for existing dashboards.
 

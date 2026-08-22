@@ -1,8 +1,9 @@
 import "./daily-card";
+import "./correction-card";
 import "./editor";
 import "./overview-card";
 
-import { CARD_VERSION, DAILY_CARD_TYPE, OVERVIEW_CARD_TYPE } from "./const";
+import { CARD_VERSION, CORRECTION_CARD_TYPE, DAILY_CARD_TYPE, OVERVIEW_CARD_TYPE } from "./const";
 
 declare global {
   interface Window {
@@ -23,6 +24,12 @@ console.info(
 
 window.customCards = window.customCards ?? [];
 window.customCards.push(
+  {
+    type: CORRECTION_CARD_TYPE,
+    name: "Chores Manager Correction",
+    description: "Admin correction by child and date.",
+    preview: false,
+  },
   {
     type: DAILY_CARD_TYPE,
     name: "Chores Manager Daily",

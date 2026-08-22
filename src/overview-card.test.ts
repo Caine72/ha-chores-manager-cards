@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ChoresManagerOverviewCard } from "./overview-card";
 import type { HomeAssistant } from "./types";
 
-function createHass(points: number, includeExtraChore = false): HomeAssistant {
+type SendMessagePromise = NonNullable<HomeAssistant["connection"]>["sendMessagePromise"];
+
+function createHass(
+  points: number,
+  includeExtraChore = false,
+  weekStart = "2026-08-15",
+): HomeAssistant {
   return {
     states: {
       "switch.kid_28_make_bed": {
@@ -45,11 +51,44 @@ function createHass(points: number, includeExtraChore = false): HomeAssistant {
         : {}),
       "sensor.kid_28_weekly_points": {
         state: String(points),
-        attributes: { child_id: "kid_28", kid_name: "Alex" },
+        attributes: { child_id: "kid_28", kid_name: "Alex", week_start: weekStart },
       },
     },
     callService: vi.fn<HomeAssistant["callService"]>(),
   };
+}
+
+function createApiHass(
+  canAdjust: boolean,
+  sendMessagePromise?: SendMessagePromise,
+): HomeAssistant {
+  const send = sendMessagePromise ?? vi.fn(async (message: Record<string, unknown>) => {
+    if (message.type === "chores_manager/weekly_points") {
+      return {
+        child_id: "kid_28",
+        child_name: "Alex",
+        points_entity_id: "sensor.kid_28_weekly_points",
+        can_adjust: canAdjust,
+        current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
+        previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
+      };
+    }
+    return {
+      child_id: "kid_28",
+      points_entity_id: "sensor.kid_28_weekly_points",
+      adjustment_id: "adjustment_1",
+      requested_amount: message.amount,
+      applied_amount: message.amount,
+      current_points: 6,
+    };
+  }) as SendMessagePromise;
+  return { ...createHass(4), connection: { sendMessagePromise: send } };
+}
+
+async function settle(card: ChoresManagerOverviewCard): Promise<void> {
+  await card.updateComplete;
+  await Promise.resolve();
+  await card.updateComplete;
 }
 
 function progressStyle(card: ChoresManagerOverviewCard): string | null {
@@ -152,6 +191,163 @@ describe("Chores Manager overview card", () => {
 
     expect(card.shadowRoot?.textContent).toContain("1 points");
     expect(card.shadowRoot?.textContent).toContain("Read a book");
+  });
+});
+
+describe("weekly points API", () => {
+  it("reloads backend week totals when the sensor week boundary changes", async () => {
+    let reads = 0;
+    const sendMessagePromise = vi.fn(async () => {
+      reads += 1;
+      return {
+        child_id: "kid_28",
+        child_name: "Alex",
+        points_entity_id: "sensor.kid_28_weekly_points",
+        can_adjust: true,
+        current_week: {
+          start: reads === 1 ? "2026-08-15" : "2026-08-21",
+          end: reads === 1 ? "2026-08-21" : "2026-08-27",
+          points: 4,
+        },
+        previous_week: {
+          start: reads === 1 ? "2026-08-08" : "2026-08-14",
+          end: reads === 1 ? "2026-08-14" : "2026-08-20",
+          points: reads === 1 ? 12 : 7,
+        },
+      };
+    }) as SendMessagePromise;
+    const initialHass = createApiHass(true, sendMessagePromise);
+    const card = new ChoresManagerOverviewCard();
+    card.hass = initialHass;
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await settle(card);
+
+    card.hass = {
+      ...initialHass,
+      states: createHass(4, false, "2026-08-21").states,
+    };
+    await settle(card);
+
+    expect(sendMessagePromise).toHaveBeenCalledTimes(2);
+    expect(card.shadowRoot?.querySelector(".previous-week")?.textContent).toContain("7");
+  });
+
+  it("disables subtraction when the backend-confirmed total is zero", async () => {
+    const sendMessagePromise = vi.fn(async (message: Record<string, unknown>) => {
+      if (message.type === "chores_manager/weekly_points") {
+        return {
+          child_id: "kid_28",
+          child_name: "Alex",
+          points_entity_id: "sensor.kid_28_weekly_points",
+          can_adjust: true,
+          current_week: { start: "2026-08-15", end: "2026-08-21", points: 0 },
+          previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
+        };
+      }
+      throw new Error(`Unexpected command ${String(message.type)}`);
+    }) as SendMessagePromise;
+    const card = new ChoresManagerOverviewCard();
+    card.hass = createApiHass(true, sendMessagePromise);
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector<HTMLButtonElement>(".subtract")?.disabled).toBe(true);
+    expect(card.shadowRoot?.querySelector<HTMLButtonElement>(".add")?.disabled).toBe(false);
+    expect(card.shadowRoot?.querySelector(".subtract span")?.textContent).toBe("1");
+    expect(card.shadowRoot?.querySelector(".add span")?.textContent).toBe("1");
+  });
+
+  it("can hide the outer card border", async () => {
+    const card = new ChoresManagerOverviewCard();
+    card.hass = createApiHass(true);
+    card.setConfig({ child_id: "kid_28", show_border: false });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector("ha-card")?.classList).toContain("borderless");
+  });
+
+  it("shows the previous-week total and authorized adjustment controls", async () => {
+    const card = new ChoresManagerOverviewCard();
+    card.hass = createApiHass(true);
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector(".previous-week")?.textContent).toContain(
+      "Previous week",
+    );
+    expect(card.shadowRoot?.querySelector(".previous-week")?.textContent).toContain("12");
+    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeTruthy();
+  });
+
+  it("omits adjustment controls when the backend denies control permission", async () => {
+    const card = new ChoresManagerOverviewCard();
+    card.hass = createApiHass(false);
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector(".previous-week")).toBeTruthy();
+    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeNull();
+  });
+
+  it("submits an audited adjustment and shows the confirmed total", async () => {
+    const sendMessagePromise = vi.fn(async (message: Record<string, unknown>) => {
+      if (message.type === "chores_manager/weekly_points") {
+        return {
+          child_id: "kid_28",
+          child_name: "Alex",
+          points_entity_id: "sensor.kid_28_weekly_points",
+          can_adjust: true,
+          current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
+          previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
+        };
+      }
+      return {
+        child_id: "kid_28",
+        points_entity_id: "sensor.kid_28_weekly_points",
+        adjustment_id: "adjustment_4",
+        requested_amount: 1,
+        applied_amount: 1,
+        current_points: 5,
+      };
+    }) as SendMessagePromise;
+    const card = new ChoresManagerOverviewCard();
+    card.hass = createApiHass(true, sendMessagePromise);
+    card.setConfig({ child_id: "kid_28", rewards: [{ points: 20, label: "Reward" }] });
+    document.body.append(card);
+    await settle(card);
+
+    card.shadowRoot?.querySelector<HTMLButtonElement>(".adjustment-actions .add")?.click();
+    await settle(card);
+
+    expect(sendMessagePromise).toHaveBeenLastCalledWith({
+      type: "chores_manager/adjust_weekly_points",
+      child_id: "kid_28",
+      amount: 1,
+    });
+    expect(card.shadowRoot?.querySelector(".points-row strong")?.textContent).toContain(
+      "5 / 20 points",
+    );
+  });
+
+  it("localizes API failures in Swedish", async () => {
+    const card = new ChoresManagerOverviewCard();
+    card.hass = {
+      ...createHass(4),
+      language: "sv",
+      connection: { sendMessagePromise: vi.fn().mockRejectedValue(new Error("failed")) },
+    };
+    card.setConfig({ child_id: "kid_28", locale: "auto" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector(".api-error")?.textContent).toContain(
+      "Veckopoängen kunde inte hämtas.",
+    );
   });
 });
 
