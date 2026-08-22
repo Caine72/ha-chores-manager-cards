@@ -8,13 +8,13 @@
 - [x] Entity-authorized current-week history.
 - [x] Visual editors, border controls, localization, and optional Person portraits.
 
-## Current release work
+## Current release: 0.3.0
 
 - [x] Align card naming on `name` → integration child name → localized fallback.
 - [x] Document automatic child-to-Person portrait resolution.
 - [x] Add public screenshots with fictional test data.
-- [ ] Complete signed-in desktop and mobile acceptance on the matching backend branch.
-- [ ] Prepare release notes and version compatibility before merging.
+- [x] Prepare version compatibility and release notes.
+- [ ] Apply the version bump, merge, and publish after backend `0.6.0`.
 
 ## Later
 

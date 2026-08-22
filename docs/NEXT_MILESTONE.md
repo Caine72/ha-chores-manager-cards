@@ -1,6 +1,6 @@
-# Current milestone: history-card release acceptance
+# Current milestone: 0.3.0 release
 
-The standalone history card and its matching backend contract are implemented. The remaining milestone is release acceptance and documentation alignment.
+The standalone history card and its matching backend contract are implemented and documented.
 
 ## Completed
 
@@ -14,12 +14,12 @@ The standalone history card and its matching backend contract are implemented. T
 - automated card tests and production build validation;
 - public screenshots using a fictional test child.
 
-## Acceptance before release
+## Remaining
 
-1. Validate Overview, Daily, History, and Correction against the matching backend in a signed-in Home Assistant session.
-2. Check desktop and mobile widths, including long chore names and tall correction lists.
-3. Confirm non-admin read/control boundaries with restricted test users.
-4. Confirm Bubble Card embedding with header and border disabled.
-5. Verify HACS installation and resource refresh from the release artifact.
+1. Release Chores Manager `0.6.0`.
+2. Change the package and card versions to `0.3.0`.
+3. Rebuild and run final validation after the version change.
+4. Merge and confirm checks on `main`.
+5. Publish `v0.3.0` and confirm the JavaScript release asset.
 
-Template sensors, Markdown cards, To-do lists, helper entities, Bubble Card, and card-mod remain migration references rather than runtime dependencies.
+See [the prepared release notes](RELEASE_0.3.0.md).
