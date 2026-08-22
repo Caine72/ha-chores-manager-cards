@@ -99,8 +99,8 @@ describe("Chores Manager history card", () => {
       type: "chores_manager/current_week_history",
       child_id: "kid_1",
     });
-    expect(card.shadowRoot?.querySelector("h1")?.textContent).toBe("Veckans sysslor");
-    expect(card.shadowRoot?.querySelector("header p")?.textContent).toBe("Alex");
+    expect(card.shadowRoot?.querySelector("h1")?.textContent).toBe("Alex");
+    expect(card.shadowRoot?.querySelector("header p")?.textContent).toBe("Veckans sysslor");
     expect(card.shadowRoot?.querySelector("img")?.getAttribute("src")).toBe("/local/alex.jpg");
     const sections = [...(card.shadowRoot?.querySelectorAll("section") ?? [])];
     expect(sections.map((section) => section.dataset.localDate)).toEqual([

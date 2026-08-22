@@ -3,7 +3,7 @@ import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { DAILY_CARD_TYPE } from "./const";
-import { getAssignments, getAssociatedPersonEntity, getChildName, getConfiguredChildId, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
+import { getAssignments, getAssociatedPersonEntity, getChildDisplayName, getConfiguredChildId, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
 import { localize } from "./localize";
 import type { ChoreAssignment, DailyCardConfig } from "./types";
 
@@ -69,11 +69,13 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
       this.hass,
       this.config.person_entity ?? getAssociatedPersonEntity(this.hass, childId),
     );
-    const title =
-      this.config.name ??
-      this.config.title ??
-      getChildName(this.hass, childId) ??
-      localize("chores", this.config.locale, this.hass);
+    const title = getChildDisplayName(
+      this.hass,
+      childId,
+      this.config.name,
+      undefined,
+      localize("chores", this.config.locale, this.hass),
+    );
 
     return html`
       <ha-card class=${this.config.show_border === false ? "borderless" : ""}>

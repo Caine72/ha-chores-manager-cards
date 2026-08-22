@@ -183,9 +183,7 @@ export interface BaseCardConfig {
   show_border?: boolean;
 }
 
-export interface DailyCardConfig extends BaseCardConfig {
-  title?: string;
-}
+export type DailyCardConfig = BaseCardConfig;
 
 export interface HistoryCardConfig extends BaseCardConfig {
   child_id: string;

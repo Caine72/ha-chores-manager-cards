@@ -79,6 +79,18 @@ export function getChildName(
   return getChildren(hass).find((child) => child.id === childId)?.name;
 }
 
+export function getChildDisplayName(
+  hass: HomeAssistant,
+  childId: string,
+  configuredName: string | undefined,
+  backendName: string | undefined,
+  fallback: string,
+): string {
+  return [configuredName, backendName, getChildName(hass, childId)]
+    .find((candidate) => candidate?.trim())
+    ?.trim() ?? fallback;
+}
+
 export function getPersonOptions(hass: HomeAssistant): PersonOption[] {
   return Object.entries(hass.states)
     .filter(([entityId]) => entityId.startsWith("person."))

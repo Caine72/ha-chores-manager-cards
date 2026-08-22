@@ -3,7 +3,7 @@ import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { CORRECTION_CARD_TYPE } from "./const";
-import { getAssociatedPersonEntity, getChildren, getEntityPicture, getWeeklyPointsWeekStart } from "./data";
+import { getAssociatedPersonEntity, getChildDisplayName, getChildren, getEntityPicture, getWeeklyPointsWeekStart } from "./data";
 import { localize, resolveLocale } from "./localize";
 import type {
   CompletionSnapshot,
@@ -80,7 +80,13 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
     const child = this.inventory?.children.find(
       (candidate) => candidate.child_id === this.config?.child_id,
     );
-    const name = this.config.name ?? child?.name ?? this.config.child_id;
+    const name = getChildDisplayName(
+      this.hass,
+      this.config.child_id,
+      this.config.name,
+      child?.name ?? this.weeklyPoints?.child_name,
+      localize("chores", this.config.locale, this.hass),
+    );
     const portrait = getEntityPicture(
       this.hass,
       this.config.person_entity ??

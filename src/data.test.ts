@@ -4,6 +4,7 @@ import {
   findPersonForChild,
   getAssociatedPersonEntity,
   getAssignments,
+  getChildDisplayName,
   getChildren,
   getConfiguredChildId,
   getWeeklyPoints,
@@ -97,6 +98,13 @@ describe("Chores Manager state adapter", () => {
   it("discovers child names and infers a matching person", () => {
     expect(getChildren(hass)).toContainEqual({ id: "kid_1", name: "Alex" });
     expect(findPersonForChild(hass, "Alex")).toBe("person.alex");
+  });
+
+  it("resolves one consistent non-empty display name", () => {
+    expect(getChildDisplayName(hass, "kid_1", "  Ally  ", "API Alex", "Chores")).toBe("Ally");
+    expect(getChildDisplayName(hass, "kid_1", " ", "API Alex", "Chores")).toBe("API Alex");
+    expect(getChildDisplayName(hass, "kid_1", undefined, undefined, "Chores")).toBe("Alex");
+    expect(getChildDisplayName(hass, "missing", undefined, undefined, "Chores")).toBe("Chores");
   });
 
   it("resolves the Person explicitly associated with a child", () => {

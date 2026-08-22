@@ -117,6 +117,8 @@ show_points: true
 
 The standalone history card lists the selected child's completed chores in the backend-configured current chore week, grouped by local day with optional point values and daily totals. Set `show_header: false` and `show_border: false` when a Bubble Card popup already supplies the surrounding header and surface. Reading history requires Home Assistant read permission for the child's weekly-points sensor. The integration enforces that permission and owns the date window; the card never assumes a reset weekday.
 
+Across all cards, `name` is the optional display-name override. When it is omitted or blank, the card uses the child's integration name and then a localized generic fallback. The removed legacy daily-card `title` property is ignored.
+
 All cards automatically use the optional Home Assistant Person associated with the selected integration child. Manage that association under **Settings > Devices & services > Chores Manager > Configure > Children**. Chores Manager stores only the Person entity ID; Home Assistant continues to own and serve the profile image. Card-level `person_entity` remains an optional override for existing YAML or alternate portraits.
 
 The old template sensor, Markdown card, To-do list, Bubble Card, and card-mod configuration are migration references only. None are runtime dependencies.
