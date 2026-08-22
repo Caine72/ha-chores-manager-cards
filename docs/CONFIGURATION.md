@@ -99,14 +99,6 @@ show_border: true
 
 The administrator-only correction card navigates dates within the current chore week and adds or removes completion snapshots through Chores Manager.
 
-## Popup placement
-
-Each card works directly on a dashboard. When a Bubble Card or another popup wrapper supplies its own header, set `show_header: false`. Set `show_border: false` to remove the outer card border.
-
-Bubble Card, Mushroom, Bar Card, card-mod, helper entities, To-do lists, scripts, and template sensors are not runtime dependencies.
-
 ## Person portraits
 
 Associate a child with a Home Assistant Person under **Settings > Devices & services > Chores Manager > Configure > Children**. The cards use that Person's current `entity_picture`.
-
-Chores Manager stores only the Person entity ID. The association affects presentation and never grants access.
