@@ -13,6 +13,7 @@
     "lint": "eslint src/**/*.ts",
     "rollup": "rollup -c",
     "test": "vitest",
+    "test:ha-frontend": "playwright test",
     "test:performance": "vitest run src/performance.test.ts src/websocket.test.ts",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
     "@rollup/plugin-commonjs": "^26.0.0",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",

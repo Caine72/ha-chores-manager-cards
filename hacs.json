@@ -1,5 +1,6 @@
 {
   "name": "Chores Manager Cards",
   "filename": "ha-chores-manager-cards.js",
+  "homeassistant": "2026.8.3",
   "render_readme": true
 }

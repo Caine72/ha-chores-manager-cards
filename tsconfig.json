@@ -12,5 +12,10 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vitest/globals"]
   },
-  "include": ["src/**/*.ts", "vite.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "tests/ha-frontend/**/*.ts",
+    "playwright.config.ts",
+    "vite.config.ts"
+  ]
 }

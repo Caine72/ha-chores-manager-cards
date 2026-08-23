@@ -1,0 +1,74 @@
+name: Home Assistant frontend compatibility
+
+on:
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: home-assistant-frontend-compatibility
+  cancel-in-progress: true
+
+jobs:
+  smoke-test:
+    name: Latest stable frontend
+    runs-on: ubuntu-latest
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
+      HA_URL: http://127.0.0.1:8123
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install dependencies and build
+        run: |
+          corepack enable
+          corepack prepare yarn@4.12.0 --activate
+          yarn install --immutable
+          yarn rollup
+
+      - name: Install Chromium
+        run: yarn playwright install --with-deps chromium
+
+      - name: Resolve latest stable Home Assistant
+        id: home-assistant
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(gh api repos/home-assistant/core/releases/latest --jq .tag_name)"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Start Home Assistant ${{ steps.home-assistant.outputs.version }}
+        run: |
+          docker run --detach \
+            --name home-assistant-smoke \
+            --publish 8123:8123 \
+            "ghcr.io/home-assistant/home-assistant:${{ steps.home-assistant.outputs.version }}"
+
+          for _ in {1..90}; do
+            if curl --fail --silent --output /dev/null "${HA_URL}/"; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker logs home-assistant-smoke
+          exit 1
+
+      - name: Run card smoke test
+        run: yarn test:ha-frontend
+
+      - name: Show Home Assistant logs after failure
+        if: failure()
+        run: docker logs home-assistant-smoke
+
+      - name: Stop Home Assistant
+        if: always()
+        run: docker rm --force home-assistant-smoke
