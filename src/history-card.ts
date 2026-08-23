@@ -3,8 +3,9 @@ import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { HISTORY_CARD_TYPE } from "./const";
-import { getAssociatedPersonEntity, getChildDisplayName, getChildren, getEntityPicture, getWeeklyPointsUpdateKey } from "./data";
+import { getAssociatedPersonEntity, getCardHassUpdateKey, getChildDisplayName, getChildren, getEntityPicture, getWeeklyPointsUpdateKey } from "./data";
 import { localize, resolveLocale } from "./localize";
+import { sendMessagePromiseDeduped } from "./websocket";
 import type {
   CompletionSnapshot,
   CurrentWeekHistoryResponse,
@@ -17,6 +18,8 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
   private config?: HistoryCardConfig;
   @state() private history?: CurrentWeekHistoryResponse;
   @state() private loadFailed = false;
+  private groupedHistory?: CurrentWeekHistoryResponse;
+  private groupedHistoryCache = new Map<string, CompletionSnapshot[]>();
   private requestChildId?: string;
   private requestConnection?: HomeAssistant["connection"];
   private requestUpdateKey?: string;
@@ -58,6 +61,16 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
 
   getCardSize(): number {
     return Math.max(2, 1 + this.groupedCompletions().size * 2);
+  }
+
+  protected hassUpdateKey(hass: HomeAssistant): readonly unknown[] | undefined {
+    return this.config
+      ? getCardHassUpdateKey(hass, this.config.child_id, [
+          this.config.weekly_points_entity,
+          this.config.person_entity,
+          this.history?.person_entity_id,
+        ])
+      : undefined;
   }
 
   protected render() {
@@ -143,6 +156,9 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
   }
 
   private groupedCompletions(): Map<string, CompletionSnapshot[]> {
+    if (this.groupedHistory === this.history) {
+      return this.groupedHistoryCache;
+    }
     const groups = new Map<string, CompletionSnapshot[]>();
     for (const completion of this.history?.completions ?? []) {
       const entries = groups.get(completion.local_date) ?? [];
@@ -157,7 +173,11 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
           left.completion_id.localeCompare(right.completion_id),
       );
     }
-    return new Map([...groups.entries()].sort(([left], [right]) => left.localeCompare(right)));
+    this.groupedHistory = this.history;
+    this.groupedHistoryCache = new Map(
+      [...groups.entries()].sort(([left], [right]) => left.localeCompare(right)),
+    );
+    return this.groupedHistoryCache;
   }
 
   private weekday(localDate: string): string {
@@ -190,8 +210,7 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
     this.requestUpdateKey = updateKey;
     this.history = undefined;
     this.loadFailed = false;
-    void connection
-      .sendMessagePromise<CurrentWeekHistoryResponse>({
+    void sendMessagePromiseDeduped<CurrentWeekHistoryResponse>(connection, {
         type: "chores_manager/current_week_history",
         child_id: childId,
       })

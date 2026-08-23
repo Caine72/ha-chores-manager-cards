@@ -1,6 +1,6 @@
 {
   "name": "ha-chores-manager-cards",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Home Assistant Lovelace cards for Chores Manager",
   "license": "MIT",
@@ -13,6 +13,7 @@
     "lint": "eslint src/**/*.ts",
     "rollup": "rollup -c",
     "test": "vitest",
+    "test:performance": "vitest run src/performance.test.ts src/websocket.test.ts",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
     "validate": "yarn lint && yarn typecheck && yarn test:run && yarn rollup"

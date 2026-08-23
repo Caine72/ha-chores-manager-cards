@@ -8,13 +8,12 @@
 - [x] Entity-authorized current-week history.
 - [x] Visual editors, border controls, localization, and optional Person portraits.
 
-## Current release: 0.3.0
+## Current release: 0.3.1
 
-- [x] Align card naming on `name` → integration child name → localized fallback.
-- [x] Document automatic child-to-Person portrait resolution.
-- [x] Add public screenshots with fictional test data.
-- [x] Prepare version compatibility and release notes.
-- [ ] Apply the version bump, merge, and publish after backend `0.6.0`.
+- [x] Reduce repeated Home Assistant state scans.
+- [x] Skip renders for unrelated state updates.
+- [x] Coalesce identical in-flight reads.
+- [x] Add performance regression coverage.
 
 ## Later
 
