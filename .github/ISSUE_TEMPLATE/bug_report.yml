@@ -1,0 +1,89 @@
+name: Bug report
+description: Report a reproducible Chores Manager card problem
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: checkboxes
+    attributes:
+      label: Before submitting
+      options:
+        - label: I am using the latest released cards and Chores Manager integration.
+          required: true
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: I removed tokens, private URLs, names, and other household data.
+          required: true
+  - type: input
+    id: home_assistant_version
+    attributes:
+      label: Home Assistant version
+      placeholder: 2026.8.0
+    validations:
+      required: true
+  - type: input
+    id: cards_version
+    attributes:
+      label: Chores Manager Cards version
+      placeholder: 0.3.2
+    validations:
+      required: true
+  - type: input
+    id: integration_version
+    attributes:
+      label: Chores Manager integration version
+      placeholder: 0.6.0
+    validations:
+      required: true
+  - type: dropdown
+    id: card
+    attributes:
+      label: Card
+      options:
+        - Daily
+        - Overview
+        - History
+        - Correction
+        - Visual editor
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      placeholder: Chrome 140 on Android
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe what happened and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Add the card ...
+        2. Configure ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Sanitized card configuration
+      description: Remove entity names or other household-specific values when they are not needed.
+      render: yaml
+  - type: textarea
+    id: logs
+    attributes:
+      label: Browser console errors
+      render: text
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add sanitized screenshots when useful.
