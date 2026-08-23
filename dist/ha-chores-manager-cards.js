@@ -352,7 +352,7 @@ const ht=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
           <span>${Ot("rewards",this.config?.locale,this.hass)}</span>
           <p>${Ot("how_points_work",this.config?.locale,this.hass)}</p>
         </summary>
-        <div class="rewards-content">
+        <div class=${!1===this.config?.show_border?"rewards-content borderless":"rewards-content"}>
           ${i.size?W`
                 <section>
                   <h2>${Ot("chores",this.config?.locale,this.hass)}</h2>
@@ -435,6 +435,7 @@ const ht=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
     summary { cursor: pointer; }
     summary span { font-size: 20px; font-weight: 600; }
     .rewards-content { margin-top: 16px; padding: 16px; border: 1px solid var(--divider-color); border-radius: 8px; }
+    .rewards-content.borderless { border: 0; }
     ul { margin: 8px 0 0; padding-left: 24px; }
     li + li { margin-top: 4px; }
     .reward-list { margin-bottom: 0; }
@@ -443,4 +444,4 @@ const ht=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
       ha-card { padding: 16px; }
       .compact-adjustment { gap:10px; }
     }
-  `}};t([ut()],le.prototype,"weeklyPoints",void 0),t([ut()],le.prototype,"weeklyPointsError",void 0),t([ut()],le.prototype,"adjustmentPending",void 0),t([ut()],le.prototype,"adjustmentError",void 0),t([ut()],le.prototype,"confirmedPoints",void 0),le=t([ht(_t)],le),console.info("%c CHORES MANAGER CARDS %c 0.3.1 ","color: white; background: #1677b8; font-weight: 600;","color: white; background: #444;"),window.customCards=window.customCards??[],window.customCards.push({type:yt,name:"Chores Manager History",description:"Current-week completed chores by child and date.",preview:!1},{type:ft,name:"Chores Manager Correction",description:"Admin correction by child and date.",preview:!1},{type:mt,name:"Chores Manager Daily",description:"Child-facing daily chore checklist.",preview:!1},{type:_t,name:"Chores Manager Overview",description:"Child points and reward overview.",preview:!1});
+  `}};t([ut()],le.prototype,"weeklyPoints",void 0),t([ut()],le.prototype,"weeklyPointsError",void 0),t([ut()],le.prototype,"adjustmentPending",void 0),t([ut()],le.prototype,"adjustmentError",void 0),t([ut()],le.prototype,"confirmedPoints",void 0),le=t([ht(_t)],le),console.info("%c CHORES MANAGER CARDS %c 0.3.2 ","color: white; background: #1677b8; font-weight: 600;","color: white; background: #444;"),window.customCards=window.customCards??[],window.customCards.push({type:yt,name:"Chores Manager History",description:"Current-week completed chores by child and date.",preview:!1},{type:ft,name:"Chores Manager Correction",description:"Admin correction by child and date.",preview:!1},{type:mt,name:"Chores Manager Daily",description:"Child-facing daily chore checklist.",preview:!1},{type:_t,name:"Chores Manager Overview",description:"Child points and reward overview.",preview:!1});

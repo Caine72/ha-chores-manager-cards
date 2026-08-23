@@ -384,7 +384,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
           <span>${localize("rewards", this.config?.locale, this.hass)}</span>
           <p>${localize("how_points_work", this.config?.locale, this.hass)}</p>
         </summary>
-        <div class="rewards-content">
+        <div class=${this.config?.show_border === false ? "rewards-content borderless" : "rewards-content"}>
           ${assignmentsByPoints.size
             ? html`
                 <section>
@@ -624,6 +624,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     summary { cursor: pointer; }
     summary span { font-size: 20px; font-weight: 600; }
     .rewards-content { margin-top: 16px; padding: 16px; border: 1px solid var(--divider-color); border-radius: 8px; }
+    .rewards-content.borderless { border: 0; }
     ul { margin: 8px 0 0; padding-left: 24px; }
     li + li { margin-top: 4px; }
     .reward-list { margin-bottom: 0; }
