@@ -352,7 +352,7 @@ const ht=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
           <span>${Ot("rewards",this.config?.locale,this.hass)}</span>
           <p>${Ot("how_points_work",this.config?.locale,this.hass)}</p>
         </summary>
-        <div class="rewards-content">
+        <div class=${!1===this.config?.show_border?"rewards-content borderless":"rewards-content"}>
           ${i.size?W`
                 <section>
                   <h2>${Ot("chores",this.config?.locale,this.hass)}</h2>
@@ -435,6 +435,7 @@ const ht=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
     summary { cursor: pointer; }
     summary span { font-size: 20px; font-weight: 600; }
     .rewards-content { margin-top: 16px; padding: 16px; border: 1px solid var(--divider-color); border-radius: 8px; }
+    .rewards-content.borderless { border: 0; }
     ul { margin: 8px 0 0; padding-left: 24px; }
     li + li { margin-top: 4px; }
     .reward-list { margin-bottom: 0; }

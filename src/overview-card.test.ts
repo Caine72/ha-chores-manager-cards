@@ -259,14 +259,21 @@ describe("weekly points API", () => {
     expect(card.shadowRoot?.querySelector(".add span")?.textContent).toBe("1");
   });
 
-  it("can hide the outer card border", async () => {
+  it("can hide the card and points-and-rewards borders", async () => {
     const card = new ChoresManagerOverviewCard();
     card.hass = createApiHass(true);
-    card.setConfig({ child_id: "kid_28", show_border: false });
+    card.setConfig({
+      child_id: "kid_28",
+      show_border: false,
+      rewards: [{ points: 20, label: "Reward" }],
+    });
     document.body.append(card);
     await settle(card);
 
     expect(card.shadowRoot?.querySelector("ha-card")?.classList).toContain("borderless");
+    expect(card.shadowRoot?.querySelector(".rewards-content")?.classList).toContain(
+      "borderless",
+    );
   });
 
   it("shows the previous-week total and authorized adjustment controls", async () => {
