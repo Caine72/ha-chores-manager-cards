@@ -3,8 +3,9 @@ import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { CORRECTION_CARD_TYPE } from "./const";
-import { getAssociatedPersonEntity, getChildDisplayName, getChildren, getEntityPicture, getWeeklyPointsWeekStart } from "./data";
+import { getAssociatedPersonEntity, getCardHassUpdateKey, getChildDisplayName, getChildren, getEntityPicture, getWeeklyPointsWeekStart } from "./data";
 import { localize, resolveLocale } from "./localize";
+import { sendMessagePromiseDeduped } from "./websocket";
 import type {
   CompletionSnapshot,
   CorrectionCardConfig,
@@ -34,6 +35,11 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
   @state() private pendingAssignment?: string;
   @state() private error?: CorrectionError;
   @state() private dateInputReady = Boolean(customElements.get("ha-date-input"));
+  private rowCache: CorrectionRow[] = [];
+  private rowCacheChildId?: string;
+  private rowCacheDate?: string;
+  private rowCacheHistory?: CurrentWeekCompletionsResponse;
+  private rowCacheInventory?: InventoryResponse;
   private requestChildId?: string;
   private requestConnection?: HomeAssistant["connection"];
   private requestWeekStart?: string;
@@ -71,6 +77,22 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
 
   getCardSize(): number {
     return 9;
+  }
+
+  protected hassUpdateKey(hass: HomeAssistant): readonly unknown[] | undefined {
+    if (!this.config) {
+      return undefined;
+    }
+    const child = this.inventory?.children.find(
+      (candidate) => candidate.child_id === this.config?.child_id,
+    );
+    return getCardHassUpdateKey(hass, this.config.child_id, [
+      child?.points_entity_id ?? undefined,
+      child?.person_entity_id,
+      this.config.person_entity,
+      this.weeklyPoints?.points_entity_id,
+      this.weeklyPoints?.person_entity_id,
+    ]);
   }
 
   protected render() {
@@ -211,6 +233,14 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
     if (!this.inventory || !this.history || !this.config || !this.selectedDate) {
       return [];
     }
+    if (
+      this.rowCacheInventory === this.inventory &&
+      this.rowCacheHistory === this.history &&
+      this.rowCacheChildId === this.config.child_id &&
+      this.rowCacheDate === this.selectedDate
+    ) {
+      return this.rowCache;
+    }
     const chores = new Map(this.inventory.chores.map((chore) => [chore.chore_id, chore]));
     const completed = new Set(
       this.history.completions
@@ -221,7 +251,7 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
         )
         .map((completion) => completion.assignment_id),
     );
-    return this.inventory.assignments
+    this.rowCache = this.inventory.assignments
       .filter((assignment) => assignment.child_id === this.config?.child_id)
       .flatMap((assignment) => {
         const chore = chores.get(assignment.chore_id);
@@ -232,6 +262,11 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
           left.chore.sort_order - right.chore.sort_order ||
           left.chore.title.localeCompare(right.chore.title),
       );
+    this.rowCacheInventory = this.inventory;
+    this.rowCacheHistory = this.history;
+    this.rowCacheChildId = this.config.child_id;
+    this.rowCacheDate = this.selectedDate;
+    return this.rowCache;
   }
 
   private load(): void {
@@ -253,8 +288,8 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
     this.requestWeekStart = weekStart;
     this.error = undefined;
     void Promise.all([
-      connection.sendMessagePromise<InventoryResponse>({ type: "chores_manager/inventory" }),
-      connection.sendMessagePromise<CurrentWeekCompletionsResponse>({ type: "chores_manager/current_week_completions" }),
+      sendMessagePromiseDeduped<InventoryResponse>(connection, { type: "chores_manager/inventory" }),
+      sendMessagePromiseDeduped<CurrentWeekCompletionsResponse>(connection, { type: "chores_manager/current_week_completions" }),
     ])
       .then(async ([inventory, history]) => {
         if (
@@ -270,7 +305,7 @@ export class ChoresManagerCorrectionCard extends ChoresManagerBaseCard {
           this.error = "child_not_found";
           return;
         }
-        const weeklyPoints = await connection.sendMessagePromise<WeeklyPointsResponse>({
+        const weeklyPoints = await sendMessagePromiseDeduped<WeeklyPointsResponse>(connection, {
           type: "chores_manager/weekly_points",
           child_id: childId,
         });

@@ -11,6 +11,7 @@ import { OVERVIEW_CARD_TYPE } from "./const";
 import {
   getAssignments,
   getAssociatedPersonEntity,
+  getCardHassUpdateKey,
   getChildDisplayName,
   getConfiguredChildId,
   getEntityPicture,
@@ -18,6 +19,7 @@ import {
   getWeeklyPointsWeekStart,
 } from "./data";
 import { localize } from "./localize";
+import { sendMessagePromiseDeduped } from "./websocket";
 import type {
   ChoreAssignment,
   HomeAssistant,
@@ -133,6 +135,21 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
 
   getCardSize(): number {
     return 5;
+  }
+
+  protected hassUpdateKey(hass: HomeAssistant): readonly unknown[] | undefined {
+    if (!this.config) {
+      return undefined;
+    }
+    const childId = getConfiguredChildId(hass, this.config);
+    return childId
+      ? getCardHassUpdateKey(hass, childId, [
+          this.config.child_entity,
+          this.config.weekly_points_entity,
+          this.config.person_entity,
+          this.weeklyPoints?.person_entity_id,
+        ])
+      : undefined;
   }
 
   protected render() {
@@ -299,8 +316,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     this.weeklyPointsWeekStart = weekStart;
     this.weeklyPoints = undefined;
     this.weeklyPointsError = false;
-    void connection
-      .sendMessagePromise<WeeklyPointsResponse>({
+    void sendMessagePromiseDeduped<WeeklyPointsResponse>(connection, {
         type: "chores_manager/weekly_points",
         child_id: childId,
       })

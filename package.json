@@ -13,6 +13,7 @@
     "lint": "eslint src/**/*.ts",
     "rollup": "rollup -c",
     "test": "vitest",
+    "test:performance": "vitest run src/performance.test.ts src/websocket.test.ts",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit",
     "validate": "yarn lint && yarn typecheck && yarn test:run && yarn rollup"

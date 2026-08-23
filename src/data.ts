@@ -11,6 +11,18 @@ export interface PersonOption {
   name: string;
 }
 
+interface StateIndex {
+  assignmentsByChild: Map<string, ChoreAssignment[]>;
+  associatedPersonByChild: Map<string, string>;
+  childEntities: Map<string, HassEntity[]>;
+  childNames: Map<string, string>;
+  children: ChoreChild[];
+  personOptions: PersonOption[];
+  weeklyPointsByChild: Map<string, HassEntity>;
+}
+
+const stateIndexes = new WeakMap<HomeAssistant["states"], StateIndex>();
+
 function attribute<T>(entity: HassEntity, name: string): T | undefined {
   return entity.attributes[name] as T | undefined;
 }
@@ -24,6 +36,111 @@ function normalized(value: string): string {
   return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 }
 
+function getStateIndex(hass: HomeAssistant): StateIndex {
+  const cached = stateIndexes.get(hass.states);
+  if (cached) {
+    return cached;
+  }
+
+  const assignmentsByChild = new Map<string, ChoreAssignment[]>();
+  const associatedPersonByChild = new Map<string, string>();
+  const childEntities = new Map<string, HassEntity[]>();
+  const childNames = new Map<string, string>();
+  const personOptions: PersonOption[] = [];
+  const weeklyPointsByChild = new Map<string, HassEntity>();
+
+  for (const [entityId, entity] of Object.entries(hass.states)) {
+    if (entityId.startsWith("person.")) {
+      personOptions.push({
+        entityId,
+        name:
+          attribute<string>(entity, "friendly_name") ??
+          entityId.slice("person.".length).replaceAll("_", " "),
+      });
+    }
+
+    const childId = attribute<string>(entity, "child_id");
+    if (!childId) {
+      continue;
+    }
+
+    const entities = childEntities.get(childId) ?? [];
+    entities.push(entity);
+    childEntities.set(childId, entities);
+
+    const childName =
+      attribute<string>(entity, "kid_name") ??
+      attribute<string>(entity, "child_name");
+    if (childName?.trim()) {
+      childNames.set(childId, childName);
+    } else if (!childNames.has(childId)) {
+      childNames.set(childId, childId);
+    }
+
+    const personEntityId = attribute<unknown>(entity, "person_entity_id");
+    if (
+      !associatedPersonByChild.has(childId) &&
+      typeof personEntityId === "string" &&
+      personEntityId.startsWith("person.")
+    ) {
+      associatedPersonByChild.set(childId, personEntityId);
+    }
+
+    if (entityId.startsWith("sensor.") && !weeklyPointsByChild.has(childId)) {
+      weeklyPointsByChild.set(childId, entity);
+    }
+
+    if (
+      entityId.startsWith("switch.") &&
+      !UNKNOWN_STATES.has(entity.state) &&
+      typeof attribute<string>(entity, "assignment_id") === "string"
+    ) {
+      const assignments = assignmentsByChild.get(childId) ?? [];
+      assignments.push({
+        assignmentId: attribute<string>(entity, "assignment_id") ?? entityId,
+        entityId,
+        childId,
+        title:
+          attribute<string>(entity, "title") ??
+          attribute<string>(entity, "friendly_name") ??
+          entityId,
+        category: attribute<string>(entity, "category") ?? "Other",
+        points: numberAttribute(entity, "points"),
+        icon:
+          attribute<string>(entity, "icon") ??
+          "mdi:checkbox-marked-circle-outline",
+        sortOrder: numberAttribute(entity, "sort_order"),
+        completed: entity.state === "on",
+      });
+      assignmentsByChild.set(childId, assignments);
+    }
+  }
+
+  for (const assignments of assignmentsByChild.values()) {
+    assignments.sort(
+      (left, right) =>
+        left.category.localeCompare(right.category) ||
+        left.sortOrder - right.sortOrder ||
+        left.title.localeCompare(right.title),
+    );
+  }
+  personOptions.sort((left, right) => left.name.localeCompare(right.name));
+
+  const index: StateIndex = {
+    assignmentsByChild,
+    associatedPersonByChild,
+    childEntities,
+    childNames,
+    children: [...childNames.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((left, right) => left.name.localeCompare(right.name)),
+    personOptions,
+    weeklyPointsByChild,
+  };
+  stateIndexes.set(hass.states, index);
+  return index;
+}
+
 function findWeeklyPointsEntity(
   hass: HomeAssistant,
   childId: string,
@@ -31,35 +148,12 @@ function findWeeklyPointsEntity(
 ): HassEntity | undefined {
   return (
     (weeklyPointsEntityId ? hass.states[weeklyPointsEntityId] : undefined) ??
-    Object.entries(hass.states).find(
-      ([entityId, candidate]) =>
-        entityId.startsWith("sensor.") &&
-        attribute<string>(candidate, "child_id") === childId,
-    )?.[1]
+    getStateIndex(hass).weeklyPointsByChild.get(childId)
   );
 }
 
 export function getChildren(hass: HomeAssistant): ChoreChild[] {
-  const children = new Map<string, string>();
-
-  for (const entity of Object.values(hass.states)) {
-    const childId = attribute<string>(entity, "child_id");
-    if (!childId) {
-      continue;
-    }
-    const childName =
-      attribute<string>(entity, "kid_name") ??
-      attribute<string>(entity, "child_name");
-    if (childName?.trim()) {
-      children.set(childId, childName);
-    } else if (!children.has(childId)) {
-      children.set(childId, childId);
-    }
-  }
-
-  return [...children.entries()]
-    .map(([id, name]) => ({ id, name }))
-    .sort((left, right) => left.name.localeCompare(right.name));
+  return getStateIndex(hass).children;
 }
 
 export function getConfiguredChildId(
@@ -76,7 +170,7 @@ export function getChildName(
   hass: HomeAssistant,
   childId: string,
 ): string | undefined {
-  return getChildren(hass).find((child) => child.id === childId)?.name;
+  return getStateIndex(hass).childNames.get(childId);
 }
 
 export function getChildDisplayName(
@@ -92,15 +186,7 @@ export function getChildDisplayName(
 }
 
 export function getPersonOptions(hass: HomeAssistant): PersonOption[] {
-  return Object.entries(hass.states)
-    .filter(([entityId]) => entityId.startsWith("person."))
-    .map(([entityId, entity]) => ({
-      entityId,
-      name:
-        attribute<string>(entity, "friendly_name") ??
-        entityId.slice("person.".length).replaceAll("_", " "),
-    }))
-    .sort((left, right) => left.name.localeCompare(right.name));
+  return getStateIndex(hass).personOptions;
 }
 
 export function findPersonForChild(
@@ -116,36 +202,7 @@ export function getAssignments(
   hass: HomeAssistant,
   childId: string,
 ): ChoreAssignment[] {
-  return Object.entries(hass.states)
-    .filter(
-      ([entityId, entity]) =>
-        entityId.startsWith("switch.") &&
-        !UNKNOWN_STATES.has(entity.state) &&
-        attribute<string>(entity, "child_id") === childId &&
-        typeof attribute<string>(entity, "assignment_id") === "string",
-    )
-    .map(([entityId, entity]) => ({
-      assignmentId: attribute<string>(entity, "assignment_id") ?? entityId,
-      entityId,
-      childId,
-      title:
-        attribute<string>(entity, "title") ??
-        attribute<string>(entity, "friendly_name") ??
-        entityId,
-      category: attribute<string>(entity, "category") ?? "Other",
-      points: numberAttribute(entity, "points"),
-      icon:
-        attribute<string>(entity, "icon") ??
-        "mdi:checkbox-marked-circle-outline",
-      sortOrder: numberAttribute(entity, "sort_order"),
-      completed: entity.state === "on",
-    }))
-    .sort(
-      (left, right) =>
-        left.category.localeCompare(right.category) ||
-        left.sortOrder - right.sortOrder ||
-        left.title.localeCompare(right.title),
-    );
+  return getStateIndex(hass).assignmentsByChild.get(childId) ?? [];
 }
 
 export function getWeeklyPoints(
@@ -202,16 +259,44 @@ export function getAssociatedPersonEntity(
   hass: HomeAssistant,
   childId: string,
 ): string | undefined {
-  for (const entity of Object.values(hass.states)) {
-    if (attribute<string>(entity, "child_id") !== childId) {
-      continue;
-    }
-    const personEntityId = attribute<unknown>(entity, "person_entity_id");
-    if (typeof personEntityId === "string" && personEntityId.startsWith("person.")) {
-      return personEntityId;
+  return getStateIndex(hass).associatedPersonByChild.get(childId);
+}
+
+export function getChildStateEntities(
+  hass: HomeAssistant,
+  childId: string,
+  extraEntityIds: Array<string | undefined> = [],
+): HassEntity[] {
+  const index = getStateIndex(hass);
+  const entities = new Set(index.childEntities.get(childId) ?? []);
+  const personEntityId = index.associatedPersonByChild.get(childId);
+  for (const entityId of [...extraEntityIds, personEntityId]) {
+    const entity = entityId ? hass.states[entityId] : undefined;
+    if (entity) {
+      entities.add(entity);
     }
   }
-  return undefined;
+  return [...entities];
+}
+
+export function getCardHassUpdateKey(
+  hass: HomeAssistant,
+  childId: string,
+  extraEntityIds: Array<string | undefined> = [],
+): readonly unknown[] {
+  return [
+    hass.connection,
+    hass.language,
+    hass.locale?.language,
+    hass.locale?.number_format,
+    hass.locale?.time_format,
+    hass.locale?.date_format,
+    hass.locale?.first_weekday,
+    hass.locale?.time_zone,
+    hass.user?.id,
+    hass.user?.is_admin,
+    ...getChildStateEntities(hass, childId, extraEntityIds),
+  ];
 }
 
 export function groupAssignments(

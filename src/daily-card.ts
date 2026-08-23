@@ -3,9 +3,9 @@ import { customElement, state } from "lit/decorators.js";
 
 import { ChoresManagerBaseCard } from "./base-card";
 import { DAILY_CARD_TYPE } from "./const";
-import { getAssignments, getAssociatedPersonEntity, getChildDisplayName, getConfiguredChildId, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
+import { getAssignments, getAssociatedPersonEntity, getCardHassUpdateKey, getChildDisplayName, getConfiguredChildId, getEntityPicture, getWeeklyPoints, groupAssignments } from "./data";
 import { localize } from "./localize";
-import type { ChoreAssignment, DailyCardConfig } from "./types";
+import type { ChoreAssignment, DailyCardConfig, HomeAssistant } from "./types";
 
 @customElement(DAILY_CARD_TYPE)
 export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
@@ -33,6 +33,20 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
 
   getCardSize(): number {
     return 4;
+  }
+
+  protected hassUpdateKey(hass: HomeAssistant): readonly unknown[] | undefined {
+    if (!this.config) {
+      return undefined;
+    }
+    const childId = getConfiguredChildId(hass, this.config);
+    return childId
+      ? getCardHassUpdateKey(hass, childId, [
+          this.config.child_entity,
+          this.config.weekly_points_entity,
+          this.config.person_entity,
+        ])
+      : undefined;
   }
 
   protected render() {

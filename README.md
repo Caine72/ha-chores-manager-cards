@@ -58,5 +58,6 @@ See the [configuration guide](docs/CONFIGURATION.md) for YAML examples, display 
 
 - [Configuration](docs/CONFIGURATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Performance](docs/PERFORMANCE.md)
 - [Migration notes](docs/LEGACY_ANALYSIS.md)
 - [Roadmap](docs/ROADMAP.md)
