@@ -8,12 +8,9 @@
 - [x] Entity-authorized current-week history.
 - [x] Visual editors, border controls, localization, and optional Person portraits.
 
-## Current release: 0.3.1
+## Current release: 0.3.2
 
-- [x] Reduce repeated Home Assistant state scans.
-- [x] Skip renders for unrelated state updates.
-- [x] Coalesce identical in-flight reads.
-- [x] Add performance regression coverage.
+- [x] Apply the overview border setting to the expanded Points & rewards panel.
 
 ## Later
 

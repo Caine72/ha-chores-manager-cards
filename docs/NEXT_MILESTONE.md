@@ -1,13 +1,10 @@
-# Current milestone: 0.3.1 performance
+# Current milestone: 0.3.2 border fix
 
-This patch release reduces frontend work without changing card configuration or backend contracts.
+This patch release fixes borderless overview cards.
 
 ## Scope
 
-- shared state indexing;
-- selective rendering;
-- in-flight request coalescing;
-- cached derived history and correction rows;
-- focused performance regression tests.
+- apply `show_border: false` to the expanded Points & rewards panel;
+- add regression coverage.
 
-See [the release notes](RELEASE_0.3.1.md).
+See [the release notes](RELEASE_0.3.2.md).
