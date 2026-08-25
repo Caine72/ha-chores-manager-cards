@@ -45,6 +45,29 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/iu;
 const HOLD_DELAY_MS = 500;
 const DOUBLE_TAP_DELAY_MS = 250;
 
+type Connection = NonNullable<HomeAssistant["connection"]>;
+const adjustmentPermissions = new WeakMap<Connection, Map<string, boolean>>();
+
+function getCachedAdjustmentPermission(
+  connection: Connection,
+  childId: string,
+): boolean | undefined {
+  return adjustmentPermissions.get(connection)?.get(childId);
+}
+
+function cacheAdjustmentPermission(
+  connection: Connection,
+  childId: string,
+  canAdjust: boolean,
+): void {
+  let permissions = adjustmentPermissions.get(connection);
+  if (!permissions) {
+    permissions = new Map<string, boolean>();
+    adjustmentPermissions.set(connection, permissions);
+  }
+  permissions.set(childId, canAdjust);
+}
+
 const LEGACY_BUTTONS: Array<Pick<OverviewButton, "label" | "icon" | "color">> = [
   { label: "Chores", icon: "mdi:format-list-checks", color: "#00bcd4" },
   { label: "History", icon: "mdi:trophy-outline", color: "#ffc107" },
@@ -62,6 +85,8 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
   private weeklyPointsChildId?: string;
   private weeklyPointsConnection?: HomeAssistant["connection"];
   private weeklyPointsWeekStart?: string;
+  private cachedAdjustmentPermission?: boolean;
+  private revealAdjustment = false;
   private readonly heldButtons = new WeakSet<HTMLButtonElement>();
   private readonly holdTimers = new WeakMap<HTMLButtonElement, number>();
   private readonly clickTimers = new WeakMap<HTMLButtonElement, number>();
@@ -230,7 +255,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
         <div class="progress" style=${"background: " + this.progressTrackColor(progressColor)} role="progressbar" aria-valuemin="0" aria-valuemax=${goal} aria-valuenow=${points}>
           <span style=${`width: ${progress}%; background: ${progressColor}`}></span>
         </div>
-        ${this.renderCompactAdjustment(childId)}
+        ${this.renderCompactAdjustment(childId, points)}
         ${buttons.length
           ? html`
               <div class="button-divider"></div>
@@ -246,7 +271,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     `;
   }
 
-  private renderCompactAdjustment(childId: string) {
+  private renderCompactAdjustment(childId: string, currentPoints: number) {
     const showAdjustments = this.config?.show_adjustments !== false;
     if (this.weeklyPointsError) {
       return html`
@@ -264,22 +289,32 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
       !this.weeklyPoints ||
       this.weeklyPoints.child_id !== childId
     ) {
-      return this.hass?.connection && this.hass.user?.is_admin === true
-        ? html`<section
-            class="compact-adjustment loading"
-            aria-hidden="true"
-          ></section>`
-        : nothing;
+      if (
+        this.hass?.user?.is_admin !== true &&
+        this.cachedAdjustmentPermission !== true
+      ) {
+        return nothing;
+      }
+      return this.renderAdjustmentControls(childId, currentPoints, false);
     }
     if (!this.weeklyPoints.can_adjust) {
       return nothing;
     }
-    const currentPoints = this.confirmedPoints ?? this.weeklyPoints.current_week.points;
 
+    return this.renderAdjustmentControls(
+      childId,
+      this.confirmedPoints ?? this.weeklyPoints.current_week.points,
+      this.revealAdjustment,
+    );
+  }
+
+  private renderAdjustmentControls(
+    childId: string,
+    currentPoints: number,
+    reveal: boolean,
+  ) {
     return html`
-      <section class=${this.hass?.user?.is_admin === true
-        ? "compact-adjustment"
-        : "compact-adjustment revealed"}>
+      <section class=${reveal ? "compact-adjustment revealed" : "compact-adjustment"}>
         <span class="adjustment-label">
           <ha-icon icon="mdi:tune-variant"></ha-icon>
           ${localize("adjust", this.config?.locale, this.hass)}
@@ -327,6 +362,8 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     this.weeklyPointsChildId = childId;
     this.weeklyPointsConnection = connection;
     this.weeklyPointsWeekStart = weekStart;
+    this.cachedAdjustmentPermission = getCachedAdjustmentPermission(connection, childId);
+    this.revealAdjustment = false;
     this.weeklyPoints = undefined;
     this.weeklyPointsError = false;
     void sendMessagePromiseDeduped<WeeklyPointsResponse>(connection, {
@@ -339,6 +376,12 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
           this.weeklyPointsConnection === connection &&
           this.weeklyPointsWeekStart === weekStart
         ) {
+          this.revealAdjustment =
+            this.hass?.user?.is_admin !== true &&
+            this.cachedAdjustmentPermission !== true &&
+            response.can_adjust;
+          this.cachedAdjustmentPermission = response.can_adjust;
+          cacheAdjustmentPermission(connection, childId, response.can_adjust);
           this.weeklyPoints = response;
         }
       })
@@ -617,7 +660,6 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     .progress { height: 6px; background: var(--secondary-background-color); overflow: hidden; }
     .progress span { display: block; height: 100%; transition: width 180ms ease-out, background 180ms ease-out; }
     .compact-adjustment { min-height:40px; display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-top:24px; }
-    .compact-adjustment.loading { visibility:hidden; }
     .compact-adjustment.revealed { overflow:hidden; animation:reveal-adjustment 160ms ease-out; }
     @keyframes reveal-adjustment {
       from { min-height:0; max-height:0; margin-top:0; opacity:0; transform:translateY(-4px); }

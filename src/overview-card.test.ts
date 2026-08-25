@@ -195,7 +195,7 @@ describe("Chores Manager overview card", () => {
 });
 
 describe("weekly points API", () => {
-  it("reserves the adjustment row while authorization is loading", async () => {
+  it("renders admin adjustment controls without waiting for authorization", async () => {
     let resolveRequest: ((value: unknown) => void) | undefined;
     const pending = new Promise((resolve) => {
       resolveRequest = resolve;
@@ -209,9 +209,7 @@ describe("weekly points API", () => {
     document.body.append(card);
     await card.updateComplete;
 
-    const loadingRow = card.shadowRoot?.querySelector(".compact-adjustment.loading");
-    expect(loadingRow?.getAttribute("aria-hidden")).toBe("true");
-    expect(loadingRow?.querySelector("button")).toBeNull();
+    expect(card.shadowRoot?.querySelectorAll(".compact-adjustment button")).toHaveLength(2);
 
     resolveRequest?.({
       child_id: "kid_28",
@@ -224,7 +222,6 @@ describe("weekly points API", () => {
     await pending;
     await card.updateComplete;
 
-    expect(card.shadowRoot?.querySelector(".compact-adjustment.loading")).toBeNull();
     expect(card.shadowRoot?.querySelectorAll(".compact-adjustment button")).toHaveLength(2);
   });
 
@@ -269,6 +266,48 @@ describe("weekly points API", () => {
     await settle(card);
 
     expect(card.shadowRoot?.querySelector(".compact-adjustment.revealed")).toBeTruthy();
+  });
+
+  it("reuses a connection-scoped permission while revalidating it", async () => {
+    let calls = 0;
+    let resolveRevalidation: ((value: unknown) => void) | undefined;
+    const revalidation = new Promise((resolve) => {
+      resolveRevalidation = resolve;
+    });
+    const response = {
+      child_id: "kid_28",
+      child_name: "Alex",
+      points_entity_id: "sensor.kid_28_weekly_points",
+      can_adjust: true,
+      current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
+      previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
+    };
+    const sendMessagePromise = vi.fn(() => {
+      calls += 1;
+      return calls === 1 ? Promise.resolve(response) : revalidation;
+    }) as SendMessagePromise;
+    const hass = {
+      ...createApiHass(true, sendMessagePromise),
+      user: { id: "parent", is_admin: false },
+    };
+    const first = new ChoresManagerOverviewCard();
+    first.hass = hass;
+    first.setConfig({ child_id: "kid_28" });
+    document.body.append(first);
+    await settle(first);
+
+    const second = new ChoresManagerOverviewCard();
+    second.hass = hass;
+    second.setConfig({ child_id: "kid_28" });
+    document.body.append(second);
+    await second.updateComplete;
+
+    expect(sendMessagePromise).toHaveBeenCalledTimes(2);
+    expect(second.shadowRoot?.querySelectorAll(".compact-adjustment button")).toHaveLength(2);
+    expect(second.shadowRoot?.querySelector(".compact-adjustment.revealed")).toBeNull();
+
+    resolveRevalidation?.(response);
+    await revalidation;
   });
 
   it("reloads backend week totals when the sensor week boundary changes", async () => {
