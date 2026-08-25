@@ -201,7 +201,10 @@ describe("weekly points API", () => {
       resolveRequest = resolve;
     });
     const card = new ChoresManagerOverviewCard();
-    card.hass = createApiHass(true, vi.fn(() => pending) as SendMessagePromise);
+    card.hass = {
+      ...createApiHass(true, vi.fn(() => pending) as SendMessagePromise),
+      user: { id: "owner", is_admin: true },
+    };
     card.setConfig({ child_id: "kid_28" });
     document.body.append(card);
     await card.updateComplete;
@@ -223,6 +226,49 @@ describe("weekly points API", () => {
 
     expect(card.shadowRoot?.querySelector(".compact-adjustment.loading")).toBeNull();
     expect(card.shadowRoot?.querySelectorAll(".compact-adjustment button")).toHaveLength(2);
+  });
+
+  it("does not reserve adjustment space for a non-admin without permission", async () => {
+    let resolveRequest: ((value: unknown) => void) | undefined;
+    const pending = new Promise((resolve) => {
+      resolveRequest = resolve;
+    });
+    const card = new ChoresManagerOverviewCard();
+    card.hass = {
+      ...createApiHass(false, vi.fn(() => pending) as SendMessagePromise),
+      user: { id: "viewer", is_admin: false },
+    };
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeNull();
+
+    resolveRequest?.({
+      child_id: "kid_28",
+      child_name: "Alex",
+      points_entity_id: "sensor.kid_28_weekly_points",
+      can_adjust: false,
+      current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
+      previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
+    });
+    await pending;
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeNull();
+  });
+
+  it("reveals an authorized non-admin adjustment row smoothly", async () => {
+    const card = new ChoresManagerOverviewCard();
+    card.hass = {
+      ...createApiHass(true),
+      user: { id: "parent", is_admin: false },
+    };
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector(".compact-adjustment.revealed")).toBeTruthy();
   });
 
   it("reloads backend week totals when the sensor week boundary changes", async () => {

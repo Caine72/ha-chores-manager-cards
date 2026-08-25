@@ -264,7 +264,7 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
       !this.weeklyPoints ||
       this.weeklyPoints.child_id !== childId
     ) {
-      return this.hass?.connection
+      return this.hass?.connection && this.hass.user?.is_admin === true
         ? html`<section
             class="compact-adjustment loading"
             aria-hidden="true"
@@ -277,7 +277,9 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     const currentPoints = this.confirmedPoints ?? this.weeklyPoints.current_week.points;
 
     return html`
-      <section class="compact-adjustment">
+      <section class=${this.hass?.user?.is_admin === true
+        ? "compact-adjustment"
+        : "compact-adjustment revealed"}>
         <span class="adjustment-label">
           <ha-icon icon="mdi:tune-variant"></ha-icon>
           ${localize("adjust", this.config?.locale, this.hass)}
@@ -616,6 +618,11 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     .progress span { display: block; height: 100%; transition: width 180ms ease-out, background 180ms ease-out; }
     .compact-adjustment { min-height:40px; display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-top:24px; }
     .compact-adjustment.loading { visibility:hidden; }
+    .compact-adjustment.revealed { overflow:hidden; animation:reveal-adjustment 160ms ease-out; }
+    @keyframes reveal-adjustment {
+      from { min-height:0; max-height:0; margin-top:0; opacity:0; transform:translateY(-4px); }
+      to { min-height:40px; max-height:40px; margin-top:24px; opacity:1; transform:translateY(0); }
+    }
     .adjustment-label { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; }
     .adjustment-label ha-icon { --mdc-icon-size:20px; }
     .adjustment-actions { display:flex; gap:8px; }
@@ -644,6 +651,9 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     @media (max-width: 480px) {
       ha-card { padding: 16px; }
       .compact-adjustment { gap:10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .compact-adjustment.revealed { animation:none; }
     }
   `;
 }
