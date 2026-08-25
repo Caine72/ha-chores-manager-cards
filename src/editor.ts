@@ -335,19 +335,27 @@ abstract class ChoresManagerCardEditor extends LitElement {
         ],
       },
       {
-        name: "adjustment_visibility_mode",
-        selector: {
-          select: {
-            mode: "dropdown",
-            options: VISIBILITY_OPTIONS,
+        type: "expandable",
+        name: "adjustment_visibility_settings",
+        title: this.label("adjustment_visibility"),
+        flatten: true,
+        schema: [
+          {
+            name: "adjustment_visibility_mode",
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: VISIBILITY_OPTIONS,
+              },
+            },
           },
-        },
-      },
-      {
-        name: "adjustment_visibility_users",
-        selector: this.visibilityUsersSelector(
-          (this.config as OverviewCardConfig).adjustment_visibility?.users,
-        ),
+          {
+            name: "adjustment_visibility_users",
+            selector: this.visibilityUsersSelector(
+              (this.config as OverviewCardConfig).adjustment_visibility?.users,
+            ),
+          },
+        ],
       },
       {
         name: "rewards",
@@ -370,39 +378,41 @@ abstract class ChoresManagerCardEditor extends LitElement {
   private renderButtonEditors() {
     const buttons = (this.config as OverviewCardConfig).buttons ?? [];
     return html`
-      <section class="button-editors">
-        <h2>${this.label("buttons")}</h2>
-        ${buttons.map(
-          (button, index) => html`
-            <section class="button-editor">
-              <div class="button-editor-heading">
-                <h3>${button.label || `${this.label("button")} ${index + 1}`}</h3>
-                <ha-icon-button
-                  .label=${this.label("remove_button")}
-                  title=${this.label("remove_button")}
-                  path="M19,13H5V11H19V13Z"
-                  @click=${() => this.removeButton(index)}
-                ></ha-icon-button>
-              </div>
-              <ha-form
-                .hass=${this.hass}
-                .data=${toEditorButton(button)}
-                .schema=${this.buttonSchema(toEditorButton(button))}
-                .computeLabel=${this.computeLabel}
-                @value-changed=${(event: FormValueChangedEvent<EditorButton>) =>
-                  this.onButtonValueChanged(index, event)}
-              ></ha-form>
-            </section>
-          `,
-        )}
-        ${buttons.length < 3
-          ? html`
-              <button class="add-button" @click=${this.addButton}>
-                <ha-icon icon="mdi:plus"></ha-icon>${this.label("add_button")}
-              </button>
-            `
-          : nothing}
-      </section>
+      <ha-expansion-panel class="buttons-panel" outlined>
+        <h2 slot="header">${this.label("buttons")}</h2>
+        <section class="button-editors">
+          ${buttons.map(
+            (button, index) => html`
+              <section class="button-editor">
+                <div class="button-editor-heading">
+                  <h3>${button.label || `${this.label("button")} ${index + 1}`}</h3>
+                  <ha-icon-button
+                    .label=${this.label("remove_button")}
+                    title=${this.label("remove_button")}
+                    path="M19,13H5V11H19V13Z"
+                    @click=${() => this.removeButton(index)}
+                  ></ha-icon-button>
+                </div>
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${toEditorButton(button)}
+                  .schema=${this.buttonSchema(toEditorButton(button))}
+                  .computeLabel=${this.computeLabel}
+                  @value-changed=${(event: FormValueChangedEvent<EditorButton>) =>
+                    this.onButtonValueChanged(index, event)}
+                ></ha-form>
+              </section>
+            `,
+          )}
+          ${buttons.length < 3
+            ? html`
+                <button class="add-button" @click=${this.addButton}>
+                  <ha-icon icon="mdi:plus"></ha-icon>${this.label("add_button")}
+                </button>
+              `
+            : nothing}
+        </section>
+      </ha-expansion-panel>
     `;
   }
 
@@ -569,7 +579,7 @@ abstract class ChoresManagerCardEditor extends LitElement {
             ? "Visa poäng"
             : "Visa poäng och belöningsmeddelande",
           show_previous_week: "Visa förra veckans poäng", show_adjustments: "Visa poängjustering",
-          adjustment_visibility_mode: "Poängjustering synlig för", adjustment_visibility_users: "Poängjusteringsanvändare",
+          adjustment_visibility: "Synlighet för poängjustering", adjustment_visibility_mode: "Synlig för", adjustment_visibility_users: "Användare",
           tap_action: "Tryck", visibility_mode: "Synlig för", visibility_users: "Användare",
           weekly_points_entity: "Veckopoäng",
         }
@@ -587,7 +597,7 @@ abstract class ChoresManagerCardEditor extends LitElement {
             ? "Show points"
             : "Show points and reward message",
           show_previous_week: "Show previous-week points", show_adjustments: "Show point adjustment",
-          adjustment_visibility_mode: "Point adjustment visible to", adjustment_visibility_users: "Point-adjustment users",
+          adjustment_visibility: "Point adjustment visibility", adjustment_visibility_mode: "Visible to", adjustment_visibility_users: "Users",
           tap_action: "Tap behavior", visibility_mode: "Visible to", visibility_users: "Users",
           weekly_points_entity: "Weekly points",
         };
@@ -596,8 +606,9 @@ abstract class ChoresManagerCardEditor extends LitElement {
 
   static styles = css`
     :host { display: block; }
-    .button-editors { display: grid; gap: 12px; margin-top: 24px; }
-    .button-editors h2, .button-editor h3 { margin: 0; font-size: 16px; }
+    .buttons-panel { display: block; margin-top: 24px; }
+    .buttons-panel h2, .button-editor h3 { margin: 0; font-size: 16px; }
+    .button-editors { display: grid; gap: 12px; padding: 0 16px 16px; }
     .button-editor { border: 1px solid var(--divider-color); border-radius: 8px; padding: 12px; }
     .button-editor-heading { align-items: center; display: flex; justify-content: space-between; margin-bottom: 8px; }
     .add-button { align-items: center; background: transparent; border: 1px solid var(--divider-color); border-radius: 8px; color: var(--primary-text-color); cursor: pointer; display: inline-flex; font: inherit; gap: 8px; justify-content: center; min-height: 40px; padding: 0 12px; }

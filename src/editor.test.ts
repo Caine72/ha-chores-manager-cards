@@ -194,8 +194,23 @@ describe("dynamic Chores Manager editor", () => {
     };
     expect(form.data.adjustment_visibility_mode).toBe("allow-list");
     expect(form.data.adjustment_visibility_users).toEqual(["parent"]);
+    const adjustmentVisibility = form.schema.find(
+      (item) => item.name === "adjustment_visibility_settings",
+    ) as {
+      type: string;
+      title: string;
+      flatten: boolean;
+      schema: Array<Record<string, unknown>>;
+    };
+    expect(adjustmentVisibility).toMatchObject({
+      type: "expandable",
+      title: "Point adjustment visibility",
+      flatten: true,
+    });
     expect(
-      form.schema.find((item) => item.name === "adjustment_visibility_users"),
+      adjustmentVisibility.schema.find(
+        (item) => item.name === "adjustment_visibility_users",
+      ),
     ).toEqual({
       name: "adjustment_visibility_users",
       selector: {
@@ -242,6 +257,24 @@ describe("dynamic Chores Manager editor", () => {
   });
 
 describe("button visibility editor", () => {
+  it("groups the button editors in a collapsed Home Assistant expansion panel", async () => {
+    const editor = document.createElement("chores-manager-overview-card-editor") as HTMLElement & {
+      hass: HomeAssistant;
+      setConfig(config: Record<string, unknown>): void;
+    };
+    editor.hass = hass;
+    editor.setConfig({ child_id: "kid_28" });
+    document.body.append(editor);
+    await (editor as unknown as { updateComplete: Promise<void> }).updateComplete;
+
+    const panel = editor.shadowRoot?.querySelector("ha-expansion-panel.buttons-panel");
+    expect(panel).toBeTruthy();
+    expect(panel?.hasAttribute("outlined")).toBe(true);
+    expect(panel?.hasAttribute("expanded")).toBe(false);
+    expect(panel?.querySelector('[slot="header"]')?.textContent).toBe("Buttons");
+    expect(panel?.querySelectorAll(".button-editor")).toHaveLength(3);
+  });
+
   it("uses the native user selector for list visibility and saves nested YAML", async () => {
     const editor = document.createElement("chores-manager-overview-card-editor") as HTMLElement & {
       hass: HomeAssistant;
