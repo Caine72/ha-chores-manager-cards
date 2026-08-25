@@ -272,7 +272,9 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
   }
 
   private renderCompactAdjustment(childId: string, currentPoints: number) {
-    const showAdjustments = this.config?.show_adjustments !== false;
+    const showAdjustments =
+      this.config?.show_adjustments !== false &&
+      this.matchesVisibility(this.config?.adjustment_visibility);
     if (this.weeklyPointsError) {
       return html`
         <p class="api-error" role="alert">
@@ -510,7 +512,10 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
   }
 
   private isVisible(button: OverviewButton): boolean {
-    const visibility = button.visibility;
+    return this.matchesVisibility(button.visibility);
+  }
+
+  private matchesVisibility(visibility: OverviewButton["visibility"]): boolean {
     const mode = visibility?.mode ?? "all";
     const users = visibility?.users ?? [];
     const user = this.hass?.user;

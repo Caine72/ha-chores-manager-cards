@@ -578,4 +578,30 @@ describe("overview visibility modes", () => {
 
     expect(card.shadowRoot?.querySelectorAll(".actions button")).toHaveLength(visible ? 1 : 0);
   });
+
+  it.each([
+    ["all", { id: "child", is_admin: false }, [], true],
+    ["administrators", { id: "parent", is_admin: true }, [], true],
+    ["administrators", { id: "child", is_admin: false }, [], false],
+    ["allow-list", { id: "parent", is_admin: false }, ["parent"], true],
+    ["allow-list", { id: "tablet", is_admin: false }, ["parent"], false],
+    ["deny-list", { id: "parent", is_admin: false }, ["tablet"], true],
+    ["deny-list", { id: "tablet", is_admin: false }, ["tablet"], false],
+  ] as const)(
+    "applies %s visibility to the adjustment row",
+    async (mode, user, users, visible) => {
+      const card = new ChoresManagerOverviewCard();
+      card.hass = { ...createApiHass(true), user };
+      card.setConfig({
+        child_id: "kid_28",
+        adjustment_visibility: { mode, users: [...users] },
+      });
+      document.body.append(card);
+      await settle(card);
+
+      expect(card.shadowRoot?.querySelector(".compact-adjustment") !== null).toBe(
+        visible,
+      );
+    },
+  );
 });

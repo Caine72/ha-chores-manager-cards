@@ -24,7 +24,7 @@ Click a preview to open the full-size image.
 ## Cards
 
 - **Daily** — grouped chores with point values and immediate completion controls.
-- **Overview** — weekly progress, rewards, previous-week points, adjustments, and dashboard actions.
+- **Overview** — weekly progress, rewards, previous-week points, user-visible adjustments, and dashboard actions.
 - **History** — completed chores grouped by day within the current chore week.
 - **Correction** — administrator controls for adding or removing dated current-week completions.
 

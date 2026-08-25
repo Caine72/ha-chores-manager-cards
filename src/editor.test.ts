@@ -175,6 +175,72 @@ describe("dynamic Chores Manager editor", () => {
     );
   });
 
+  it("edits adjustment visibility as nested card configuration", async () => {
+    const editor = document.createElement("chores-manager-overview-card-editor") as HTMLElement & {
+      hass: HomeAssistant;
+      setConfig(config: Record<string, unknown>): void;
+    };
+    editor.hass = hass;
+    editor.setConfig({
+      child_id: "kid_28",
+      adjustment_visibility: { mode: "allow-list", users: ["parent"] },
+    });
+    document.body.append(editor);
+    await (editor as unknown as { updateComplete: Promise<void> }).updateComplete;
+
+    const form = editor.shadowRoot?.querySelector("ha-form") as HTMLElement & {
+      schema: Array<Record<string, unknown>>;
+      data: Record<string, unknown>;
+    };
+    expect(form.data.adjustment_visibility_mode).toBe("allow-list");
+    expect(form.data.adjustment_visibility_users).toEqual(["parent"]);
+    expect(
+      form.schema.find((item) => item.name === "adjustment_visibility_users"),
+    ).toEqual({
+      name: "adjustment_visibility_users",
+      selector: {
+        select: {
+          multiple: true,
+          mode: "dropdown",
+          options: [{ value: "parent", label: "parent" }],
+        },
+      },
+    });
+
+    const changed = new Promise<Record<string, unknown>>((resolve) => {
+      editor.addEventListener(
+        "config-changed",
+        (event) => {
+          resolve(
+            (event as CustomEvent<{ config: Record<string, unknown> }>).detail
+              .config,
+          );
+        },
+        { once: true },
+      );
+    });
+    form.dispatchEvent(
+      new CustomEvent("value-changed", {
+        bubbles: true,
+        composed: true,
+        detail: {
+          value: {
+            ...form.data,
+            adjustment_visibility_mode: "deny-list",
+            adjustment_visibility_users: ["tablet"],
+          },
+        },
+      }),
+    );
+
+    const config = await changed;
+    expect(config).toMatchObject({
+      adjustment_visibility: { mode: "deny-list", users: ["tablet"] },
+    });
+    expect(config).not.toHaveProperty("adjustment_visibility_mode");
+    expect(config).not.toHaveProperty("adjustment_visibility_users");
+  });
+
 describe("button visibility editor", () => {
   it("uses the native user selector for list visibility and saves nested YAML", async () => {
     const editor = document.createElement("chores-manager-overview-card-editor") as HTMLElement & {

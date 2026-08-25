@@ -197,6 +197,7 @@ export interface OverviewCardConfig extends BaseCardConfig {
   progress_color?: string;
   show_previous_week?: boolean;
   show_adjustments?: boolean;
+  adjustment_visibility?: ButtonVisibility;
   rewards?: RewardTier[];
   buttons?: OverviewButton[];
   daily_action?: ActionConfig;
