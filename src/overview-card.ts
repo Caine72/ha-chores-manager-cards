@@ -256,11 +256,22 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
       `;
     }
     if (
-      !showAdjustments ||
-      !this.weeklyPoints ||
-      this.weeklyPoints.child_id !== childId ||
-      !this.weeklyPoints.can_adjust
+      !showAdjustments
     ) {
+      return nothing;
+    }
+    if (
+      !this.weeklyPoints ||
+      this.weeklyPoints.child_id !== childId
+    ) {
+      return this.hass?.connection
+        ? html`<section
+            class="compact-adjustment loading"
+            aria-hidden="true"
+          ></section>`
+        : nothing;
+    }
+    if (!this.weeklyPoints.can_adjust) {
       return nothing;
     }
     const currentPoints = this.confirmedPoints ?? this.weeklyPoints.current_week.points;
@@ -603,7 +614,8 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     p { margin: 3px 0 0; color: var(--secondary-text-color); font-size: 14px; }
     .progress { height: 6px; background: var(--secondary-background-color); overflow: hidden; }
     .progress span { display: block; height: 100%; transition: width 180ms ease-out, background 180ms ease-out; }
-    .compact-adjustment { display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-top:24px; }
+    .compact-adjustment { min-height:40px; display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-top:24px; }
+    .compact-adjustment.loading { visibility:hidden; }
     .adjustment-label { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; }
     .adjustment-label ha-icon { --mdc-icon-size:20px; }
     .adjustment-actions { display:flex; gap:8px; }

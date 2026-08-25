@@ -322,7 +322,10 @@ const ht=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
         <p class="api-error" role="alert">
           ${Ot("weekly_points_error",this.config?.locale,this.hass)}
         </p>
-      `;if(!e||!this.weeklyPoints||this.weeklyPoints.child_id!==t||!this.weeklyPoints.can_adjust)return L;const i=this.confirmedPoints??this.weeklyPoints.current_week.points;return W`
+      `;if(!e)return L;if(!this.weeklyPoints||this.weeklyPoints.child_id!==t)return this.hass?.connection?W`<section
+            class="compact-adjustment loading"
+            aria-hidden="true"
+          ></section>`:L;if(!this.weeklyPoints.can_adjust)return L;const i=this.confirmedPoints??this.weeklyPoints.current_week.points;return W`
       <section class="compact-adjustment">
         <span class="adjustment-label">
           <ha-icon icon="mdi:tune-variant"></ha-icon>
@@ -414,7 +417,8 @@ const ht=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
     p { margin: 3px 0 0; color: var(--secondary-text-color); font-size: 14px; }
     .progress { height: 6px; background: var(--secondary-background-color); overflow: hidden; }
     .progress span { display: block; height: 100%; transition: width 180ms ease-out, background 180ms ease-out; }
-    .compact-adjustment { display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-top:24px; }
+    .compact-adjustment { min-height:40px; display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-top:24px; }
+    .compact-adjustment.loading { visibility:hidden; }
     .adjustment-label { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; }
     .adjustment-label ha-icon { --mdc-icon-size:20px; }
     .adjustment-actions { display:flex; gap:8px; }
