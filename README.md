@@ -32,7 +32,7 @@ All cards support visual configuration, Swedish and English presentation, border
 
 ## Installation
 
-Chores Manager `0.6.0` or newer is required.
+Chores Manager `0.7.0` or newer is required.
 
 ### HACS
 

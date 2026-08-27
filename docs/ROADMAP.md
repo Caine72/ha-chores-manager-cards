@@ -8,9 +8,11 @@
 - [x] Entity-authorized current-week history.
 - [x] Visual editors, border controls, localization, and optional Person portraits.
 
-## Current release: 0.3.2
+## Current release: 0.4.0
 
-- [x] Apply the overview border setting to the expanded Points & rewards panel.
+- [x] Add user visibility rules for overview point adjustments.
+- [x] Remove adjustment capability loading from the render path.
+- [x] Add collapsible adjustment and button editor sections.
 
 ## Later
 
