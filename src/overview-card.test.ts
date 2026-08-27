@@ -195,6 +195,121 @@ describe("Chores Manager overview card", () => {
 });
 
 describe("weekly points API", () => {
+  it("renders admin adjustment controls without waiting for authorization", async () => {
+    let resolveRequest: ((value: unknown) => void) | undefined;
+    const pending = new Promise((resolve) => {
+      resolveRequest = resolve;
+    });
+    const card = new ChoresManagerOverviewCard();
+    card.hass = {
+      ...createApiHass(true, vi.fn(() => pending) as SendMessagePromise),
+      user: { id: "owner", is_admin: true },
+    };
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelectorAll(".compact-adjustment button")).toHaveLength(2);
+
+    resolveRequest?.({
+      child_id: "kid_28",
+      child_name: "Alex",
+      points_entity_id: "sensor.kid_28_weekly_points",
+      can_adjust: true,
+      current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
+      previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
+    });
+    await pending;
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelectorAll(".compact-adjustment button")).toHaveLength(2);
+  });
+
+  it("does not reserve adjustment space for a non-admin without permission", async () => {
+    let resolveRequest: ((value: unknown) => void) | undefined;
+    const pending = new Promise((resolve) => {
+      resolveRequest = resolve;
+    });
+    const card = new ChoresManagerOverviewCard();
+    card.hass = {
+      ...createApiHass(false, vi.fn(() => pending) as SendMessagePromise),
+      user: { id: "viewer", is_admin: false },
+    };
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeNull();
+
+    resolveRequest?.({
+      child_id: "kid_28",
+      child_name: "Alex",
+      points_entity_id: "sensor.kid_28_weekly_points",
+      can_adjust: false,
+      current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
+      previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
+    });
+    await pending;
+    await card.updateComplete;
+
+    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeNull();
+  });
+
+  it("reveals an authorized non-admin adjustment row smoothly", async () => {
+    const card = new ChoresManagerOverviewCard();
+    card.hass = {
+      ...createApiHass(true),
+      user: { id: "parent", is_admin: false },
+    };
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector(".compact-adjustment.revealed")).toBeTruthy();
+  });
+
+  it("reuses a connection-scoped permission while revalidating it", async () => {
+    let calls = 0;
+    let resolveRevalidation: ((value: unknown) => void) | undefined;
+    const revalidation = new Promise((resolve) => {
+      resolveRevalidation = resolve;
+    });
+    const response = {
+      child_id: "kid_28",
+      child_name: "Alex",
+      points_entity_id: "sensor.kid_28_weekly_points",
+      can_adjust: true,
+      current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
+      previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
+    };
+    const sendMessagePromise = vi.fn(() => {
+      calls += 1;
+      return calls === 1 ? Promise.resolve(response) : revalidation;
+    }) as SendMessagePromise;
+    const hass = {
+      ...createApiHass(true, sendMessagePromise),
+      user: { id: "parent", is_admin: false },
+    };
+    const first = new ChoresManagerOverviewCard();
+    first.hass = hass;
+    first.setConfig({ child_id: "kid_28" });
+    document.body.append(first);
+    await settle(first);
+
+    const second = new ChoresManagerOverviewCard();
+    second.hass = hass;
+    second.setConfig({ child_id: "kid_28" });
+    document.body.append(second);
+    await second.updateComplete;
+
+    expect(sendMessagePromise).toHaveBeenCalledTimes(2);
+    expect(second.shadowRoot?.querySelectorAll(".compact-adjustment button")).toHaveLength(2);
+    expect(second.shadowRoot?.querySelector(".compact-adjustment.revealed")).toBeNull();
+
+    resolveRevalidation?.(response);
+    await revalidation;
+  });
+
   it("reloads backend week totals when the sensor week boundary changes", async () => {
     let reads = 0;
     const sendMessagePromise = vi.fn(async () => {
