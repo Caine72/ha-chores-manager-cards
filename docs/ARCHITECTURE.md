@@ -11,7 +11,7 @@ Chores Manager Cards is a frontend-only package. The integration owns children, 
 | History | `chores_manager/current_week_history` | None | Weekly-points sensor `read` permission |
 | Correction | Inventory, current-week completions, and weekly points | `chores_manager/set_current_week_completion` | Administrator-only backend commands |
 
-Conditional rendering is presentation, not authorization. The backend returns capabilities and enforces each protected operation.
+Conditional rendering is presentation, not authorization. The backend enforces each protected operation when it is called.
 
 ## Stable identity
 

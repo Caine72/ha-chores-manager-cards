@@ -45,29 +45,6 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/iu;
 const HOLD_DELAY_MS = 500;
 const DOUBLE_TAP_DELAY_MS = 250;
 
-type Connection = NonNullable<HomeAssistant["connection"]>;
-const adjustmentPermissions = new WeakMap<Connection, Map<string, boolean>>();
-
-function getCachedAdjustmentPermission(
-  connection: Connection,
-  childId: string,
-): boolean | undefined {
-  return adjustmentPermissions.get(connection)?.get(childId);
-}
-
-function cacheAdjustmentPermission(
-  connection: Connection,
-  childId: string,
-  canAdjust: boolean,
-): void {
-  let permissions = adjustmentPermissions.get(connection);
-  if (!permissions) {
-    permissions = new Map<string, boolean>();
-    adjustmentPermissions.set(connection, permissions);
-  }
-  permissions.set(childId, canAdjust);
-}
-
 const LEGACY_BUTTONS: Array<Pick<OverviewButton, "label" | "icon" | "color">> = [
   { label: "Chores", icon: "mdi:format-list-checks", color: "#00bcd4" },
   { label: "History", icon: "mdi:trophy-outline", color: "#ffc107" },
@@ -85,8 +62,6 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
   private weeklyPointsChildId?: string;
   private weeklyPointsConnection?: HomeAssistant["connection"];
   private weeklyPointsWeekStart?: string;
-  private cachedAdjustmentPermission?: boolean;
-  private revealAdjustment = false;
   private readonly heldButtons = new WeakSet<HTMLButtonElement>();
   private readonly holdTimers = new WeakMap<HTMLButtonElement, number>();
   private readonly clickTimers = new WeakMap<HTMLButtonElement, number>();
@@ -275,48 +250,25 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     const showAdjustments =
       this.config?.show_adjustments !== false &&
       this.matchesVisibility(this.config?.adjustment_visibility);
-    if (this.weeklyPointsError) {
-      return html`
-        <p class="api-error" role="alert">
-          ${localize("weekly_points_error", this.config?.locale, this.hass)}
-        </p>
-      `;
-    }
-    if (
-      !showAdjustments
-    ) {
+    if (!showAdjustments) {
       return nothing;
     }
-    if (
-      !this.weeklyPoints ||
-      this.weeklyPoints.child_id !== childId
-    ) {
-      if (
-        this.hass?.user?.is_admin !== true &&
-        this.cachedAdjustmentPermission !== true
-      ) {
-        return nothing;
-      }
-      return this.renderAdjustmentControls(childId, currentPoints, false);
-    }
-    if (!this.weeklyPoints.can_adjust) {
-      return nothing;
-    }
-
-    return this.renderAdjustmentControls(
-      childId,
-      this.confirmedPoints ?? this.weeklyPoints.current_week.points,
-      this.revealAdjustment,
-    );
+    return html`
+      ${this.weeklyPointsError
+        ? html`<p class="api-error" role="alert">
+            ${localize("weekly_points_error", this.config?.locale, this.hass)}
+          </p>`
+        : nothing}
+      ${this.renderAdjustmentControls(childId, currentPoints)}
+    `;
   }
 
   private renderAdjustmentControls(
     childId: string,
     currentPoints: number,
-    reveal: boolean,
   ) {
     return html`
-      <section class=${reveal ? "compact-adjustment revealed" : "compact-adjustment"}>
+      <section class="compact-adjustment">
         <span class="adjustment-label">
           <ha-icon icon="mdi:tune-variant"></ha-icon>
           ${localize("adjust", this.config?.locale, this.hass)}
@@ -364,8 +316,6 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     this.weeklyPointsChildId = childId;
     this.weeklyPointsConnection = connection;
     this.weeklyPointsWeekStart = weekStart;
-    this.cachedAdjustmentPermission = getCachedAdjustmentPermission(connection, childId);
-    this.revealAdjustment = false;
     this.weeklyPoints = undefined;
     this.weeklyPointsError = false;
     void sendMessagePromiseDeduped<WeeklyPointsResponse>(connection, {
@@ -378,12 +328,6 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
           this.weeklyPointsConnection === connection &&
           this.weeklyPointsWeekStart === weekStart
         ) {
-          this.revealAdjustment =
-            this.hass?.user?.is_admin !== true &&
-            this.cachedAdjustmentPermission !== true &&
-            response.can_adjust;
-          this.cachedAdjustmentPermission = response.can_adjust;
-          cacheAdjustmentPermission(connection, childId, response.can_adjust);
           this.weeklyPoints = response;
         }
       })
@@ -665,11 +609,6 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     .progress { height: 6px; background: var(--secondary-background-color); overflow: hidden; }
     .progress span { display: block; height: 100%; transition: width 180ms ease-out, background 180ms ease-out; }
     .compact-adjustment { min-height:40px; display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-top:24px; }
-    .compact-adjustment.revealed { overflow:hidden; animation:reveal-adjustment 160ms ease-out; }
-    @keyframes reveal-adjustment {
-      from { min-height:0; max-height:0; margin-top:0; opacity:0; transform:translateY(-4px); }
-      to { min-height:40px; max-height:40px; margin-top:24px; opacity:1; transform:translateY(0); }
-    }
     .adjustment-label { display:flex; align-items:center; gap:7px; font-size:13px; font-weight:600; }
     .adjustment-label ha-icon { --mdc-icon-size:20px; }
     .adjustment-actions { display:flex; gap:8px; }
@@ -698,9 +637,6 @@ export class ChoresManagerOverviewCard extends ChoresManagerBaseCard {
     @media (max-width: 480px) {
       ha-card { padding: 16px; }
       .compact-adjustment { gap:10px; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .compact-adjustment.revealed { animation:none; }
     }
   `;
 }

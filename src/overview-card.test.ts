@@ -58,17 +58,13 @@ function createHass(
   };
 }
 
-function createApiHass(
-  canAdjust: boolean,
-  sendMessagePromise?: SendMessagePromise,
-): HomeAssistant {
+function createApiHass(sendMessagePromise?: SendMessagePromise): HomeAssistant {
   const send = sendMessagePromise ?? vi.fn(async (message: Record<string, unknown>) => {
     if (message.type === "chores_manager/weekly_points") {
       return {
         child_id: "kid_28",
         child_name: "Alex",
         points_entity_id: "sensor.kid_28_weekly_points",
-        can_adjust: canAdjust,
         current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
         previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
       };
@@ -195,15 +191,15 @@ describe("Chores Manager overview card", () => {
 });
 
 describe("weekly points API", () => {
-  it("renders admin adjustment controls without waiting for authorization", async () => {
+  it("renders adjustment controls without waiting for weekly totals", async () => {
     let resolveRequest: ((value: unknown) => void) | undefined;
     const pending = new Promise((resolve) => {
       resolveRequest = resolve;
     });
     const card = new ChoresManagerOverviewCard();
     card.hass = {
-      ...createApiHass(true, vi.fn(() => pending) as SendMessagePromise),
-      user: { id: "owner", is_admin: true },
+      ...createApiHass(vi.fn(() => pending) as SendMessagePromise),
+      user: { id: "parent", is_admin: false },
     };
     card.setConfig({ child_id: "kid_28" });
     document.body.append(card);
@@ -215,7 +211,6 @@ describe("weekly points API", () => {
       child_id: "kid_28",
       child_name: "Alex",
       points_entity_id: "sensor.kid_28_weekly_points",
-      can_adjust: true,
       current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
       previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
     });
@@ -225,89 +220,17 @@ describe("weekly points API", () => {
     expect(card.shadowRoot?.querySelectorAll(".compact-adjustment button")).toHaveLength(2);
   });
 
-  it("does not reserve adjustment space for a non-admin without permission", async () => {
-    let resolveRequest: ((value: unknown) => void) | undefined;
-    const pending = new Promise((resolve) => {
-      resolveRequest = resolve;
-    });
+  it("renders the non-admin adjustment row from frontend visibility alone", async () => {
     const card = new ChoresManagerOverviewCard();
     card.hass = {
-      ...createApiHass(false, vi.fn(() => pending) as SendMessagePromise),
-      user: { id: "viewer", is_admin: false },
-    };
-    card.setConfig({ child_id: "kid_28" });
-    document.body.append(card);
-    await card.updateComplete;
-
-    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeNull();
-
-    resolveRequest?.({
-      child_id: "kid_28",
-      child_name: "Alex",
-      points_entity_id: "sensor.kid_28_weekly_points",
-      can_adjust: false,
-      current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
-      previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
-    });
-    await pending;
-    await card.updateComplete;
-
-    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeNull();
-  });
-
-  it("reveals an authorized non-admin adjustment row smoothly", async () => {
-    const card = new ChoresManagerOverviewCard();
-    card.hass = {
-      ...createApiHass(true),
+      ...createApiHass(),
       user: { id: "parent", is_admin: false },
     };
     card.setConfig({ child_id: "kid_28" });
     document.body.append(card);
     await settle(card);
 
-    expect(card.shadowRoot?.querySelector(".compact-adjustment.revealed")).toBeTruthy();
-  });
-
-  it("reuses a connection-scoped permission while revalidating it", async () => {
-    let calls = 0;
-    let resolveRevalidation: ((value: unknown) => void) | undefined;
-    const revalidation = new Promise((resolve) => {
-      resolveRevalidation = resolve;
-    });
-    const response = {
-      child_id: "kid_28",
-      child_name: "Alex",
-      points_entity_id: "sensor.kid_28_weekly_points",
-      can_adjust: true,
-      current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
-      previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
-    };
-    const sendMessagePromise = vi.fn(() => {
-      calls += 1;
-      return calls === 1 ? Promise.resolve(response) : revalidation;
-    }) as SendMessagePromise;
-    const hass = {
-      ...createApiHass(true, sendMessagePromise),
-      user: { id: "parent", is_admin: false },
-    };
-    const first = new ChoresManagerOverviewCard();
-    first.hass = hass;
-    first.setConfig({ child_id: "kid_28" });
-    document.body.append(first);
-    await settle(first);
-
-    const second = new ChoresManagerOverviewCard();
-    second.hass = hass;
-    second.setConfig({ child_id: "kid_28" });
-    document.body.append(second);
-    await second.updateComplete;
-
-    expect(sendMessagePromise).toHaveBeenCalledTimes(2);
-    expect(second.shadowRoot?.querySelectorAll(".compact-adjustment button")).toHaveLength(2);
-    expect(second.shadowRoot?.querySelector(".compact-adjustment.revealed")).toBeNull();
-
-    resolveRevalidation?.(response);
-    await revalidation;
+    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeTruthy();
   });
 
   it("reloads backend week totals when the sensor week boundary changes", async () => {
@@ -318,7 +241,6 @@ describe("weekly points API", () => {
         child_id: "kid_28",
         child_name: "Alex",
         points_entity_id: "sensor.kid_28_weekly_points",
-        can_adjust: true,
         current_week: {
           start: reads === 1 ? "2026-08-15" : "2026-08-21",
           end: reads === 1 ? "2026-08-21" : "2026-08-27",
@@ -331,7 +253,7 @@ describe("weekly points API", () => {
         },
       };
     }) as SendMessagePromise;
-    const initialHass = createApiHass(true, sendMessagePromise);
+    const initialHass = createApiHass(sendMessagePromise);
     const card = new ChoresManagerOverviewCard();
     card.hass = initialHass;
     card.setConfig({ child_id: "kid_28" });
@@ -348,14 +270,13 @@ describe("weekly points API", () => {
     expect(card.shadowRoot?.querySelector(".previous-week")?.textContent).toContain("7");
   });
 
-  it("disables subtraction when the backend-confirmed total is zero", async () => {
+  it("disables subtraction when the current total is zero", async () => {
     const sendMessagePromise = vi.fn(async (message: Record<string, unknown>) => {
       if (message.type === "chores_manager/weekly_points") {
         return {
           child_id: "kid_28",
           child_name: "Alex",
           points_entity_id: "sensor.kid_28_weekly_points",
-          can_adjust: true,
           current_week: { start: "2026-08-15", end: "2026-08-21", points: 0 },
           previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
         };
@@ -363,7 +284,10 @@ describe("weekly points API", () => {
       throw new Error(`Unexpected command ${String(message.type)}`);
     }) as SendMessagePromise;
     const card = new ChoresManagerOverviewCard();
-    card.hass = createApiHass(true, sendMessagePromise);
+    card.hass = {
+      ...createApiHass(sendMessagePromise),
+      states: createHass(0).states,
+    };
     card.setConfig({ child_id: "kid_28" });
     document.body.append(card);
     await settle(card);
@@ -376,7 +300,7 @@ describe("weekly points API", () => {
 
   it("can hide the card and points-and-rewards borders", async () => {
     const card = new ChoresManagerOverviewCard();
-    card.hass = createApiHass(true);
+    card.hass = createApiHass();
     card.setConfig({
       child_id: "kid_28",
       show_border: false,
@@ -391,9 +315,9 @@ describe("weekly points API", () => {
     );
   });
 
-  it("shows the previous-week total and authorized adjustment controls", async () => {
+  it("shows the previous-week total and frontend-visible adjustment controls", async () => {
     const card = new ChoresManagerOverviewCard();
-    card.hass = createApiHass(true);
+    card.hass = createApiHass();
     card.setConfig({ child_id: "kid_28" });
     document.body.append(card);
     await settle(card);
@@ -405,17 +329,6 @@ describe("weekly points API", () => {
     expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeTruthy();
   });
 
-  it("omits adjustment controls when the backend denies control permission", async () => {
-    const card = new ChoresManagerOverviewCard();
-    card.hass = createApiHass(false);
-    card.setConfig({ child_id: "kid_28" });
-    document.body.append(card);
-    await settle(card);
-
-    expect(card.shadowRoot?.querySelector(".previous-week")).toBeTruthy();
-    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeNull();
-  });
-
   it("submits an audited adjustment and shows the confirmed total", async () => {
     const sendMessagePromise = vi.fn(async (message: Record<string, unknown>) => {
       if (message.type === "chores_manager/weekly_points") {
@@ -423,7 +336,6 @@ describe("weekly points API", () => {
           child_id: "kid_28",
           child_name: "Alex",
           points_entity_id: "sensor.kid_28_weekly_points",
-          can_adjust: true,
           current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
           previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
         };
@@ -438,7 +350,7 @@ describe("weekly points API", () => {
       };
     }) as SendMessagePromise;
     const card = new ChoresManagerOverviewCard();
-    card.hass = createApiHass(true, sendMessagePromise);
+    card.hass = createApiHass(sendMessagePromise);
     card.setConfig({ child_id: "kid_28", rewards: [{ points: 20, label: "Reward" }] });
     document.body.append(card);
     await settle(card);
@@ -453,6 +365,37 @@ describe("weekly points API", () => {
     });
     expect(card.shadowRoot?.querySelector(".points-row strong")?.textContent).toContain(
       "5 / 20 points",
+    );
+  });
+
+  it("keeps frontend-visible controls and reports a rejected adjustment", async () => {
+    const sendMessagePromise = vi.fn(async (message: Record<string, unknown>) => {
+      if (message.type === "chores_manager/weekly_points") {
+        return {
+          child_id: "kid_28",
+          child_name: "Alex",
+          points_entity_id: "sensor.kid_28_weekly_points",
+          current_week: { start: "2026-08-15", end: "2026-08-21", points: 4 },
+          previous_week: { start: "2026-08-08", end: "2026-08-14", points: 12 },
+        };
+      }
+      throw new Error("unauthorized");
+    }) as SendMessagePromise;
+    const card = new ChoresManagerOverviewCard();
+    card.hass = {
+      ...createApiHass(sendMessagePromise),
+      user: { id: "viewer", is_admin: false },
+    };
+    card.setConfig({ child_id: "kid_28" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector(".compact-adjustment")).toBeTruthy();
+    card.shadowRoot?.querySelector<HTMLButtonElement>(".adjustment-actions .add")?.click();
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector(".compact-adjustment .api-error")?.textContent).toContain(
+      "The point adjustment could not be saved.",
     );
   });
 
@@ -591,7 +534,7 @@ describe("overview visibility modes", () => {
     "applies %s visibility to the adjustment row",
     async (mode, user, users, visible) => {
       const card = new ChoresManagerOverviewCard();
-      card.hass = { ...createApiHass(true), user };
+      card.hass = { ...createApiHass(), user };
       card.setConfig({
         child_id: "kid_28",
         adjustment_visibility: { mode, users: [...users] },

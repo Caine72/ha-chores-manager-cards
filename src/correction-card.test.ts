@@ -54,7 +54,6 @@ function apiHass(): {
           child_id: "kid_1",
           child_name: "Alex",
           points_entity_id: "sensor.kid_1_weekly_points",
-          can_adjust: true,
           current_week: { start: weekStart, end: weekEnd(), points: 2 },
           previous_week: { start: "2026-08-08", end: "2026-08-14", points: 10 },
         };

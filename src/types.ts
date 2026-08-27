@@ -42,7 +42,6 @@ export interface WeeklyPointsResponse {
   child_name: string;
   person_entity_id?: string;
   points_entity_id: string;
-  can_adjust: boolean;
   current_week: WeeklyPointsPeriod;
   previous_week: WeeklyPointsPeriod;
 }
