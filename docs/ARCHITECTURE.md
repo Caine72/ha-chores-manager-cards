@@ -7,11 +7,11 @@ Chores Manager Cards is a frontend-only package. The integration owns children, 
 | Card | Reads | Writes | Authorization |
 | --- | --- | --- | --- |
 | Daily | Visible assignment switches and weekly-points sensor | `switch.turn_on`, `switch.turn_off` | Home Assistant entity visibility and service permissions |
-| Overview | Visible entities and `chores_manager/weekly_points` | `chores_manager/adjust_weekly_points` | Weekly-points sensor `read` or `control` permission |
+| Overview | Visible entities and `chores_manager/weekly_points` | `chores_manager/adjust_weekly_points` | `read` permission for totals; authenticated connection for adjustments |
 | History | `chores_manager/current_week_history` | None | Weekly-points sensor `read` permission |
 | Correction | Inventory, current-week completions, and weekly points | `chores_manager/set_current_week_completion` | Administrator-only backend commands |
 
-Conditional rendering is presentation, not authorization. The backend enforces each protected operation when it is called.
+Conditional rendering is presentation, not authorization. It does not restrict direct API calls; each backend command applies its documented authentication or authorization policy.
 
 ## Stable identity
 

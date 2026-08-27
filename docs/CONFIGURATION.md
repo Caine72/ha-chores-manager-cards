@@ -74,7 +74,7 @@ buttons:
 
 Rewards define progress targets. `progress_color` applies before the first reward; an optional reward color applies at its threshold. `goal_points` remains a YAML compatibility fallback.
 
-Point adjustments and up to three buttons may use `all`, `administrators`, `allow-list`, or `deny-list` visibility. These card rules change presentation only; backend adjustment access still applies. Buttons also support standard Home Assistant tap, hold, and double-tap actions.
+Point adjustments and up to three buttons may use `all`, `administrators`, `allow-list`, or `deny-list` visibility. These rules change presentation only; any authenticated Home Assistant user can call the adjustment API directly. Buttons also support standard Home Assistant tap, hold, and double-tap actions.
 
 ## History card
 
