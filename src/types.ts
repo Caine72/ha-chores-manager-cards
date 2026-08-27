@@ -42,7 +42,6 @@ export interface WeeklyPointsResponse {
   child_name: string;
   person_entity_id?: string;
   points_entity_id: string;
-  can_adjust: boolean;
   current_week: WeeklyPointsPeriod;
   previous_week: WeeklyPointsPeriod;
 }
@@ -197,6 +196,7 @@ export interface OverviewCardConfig extends BaseCardConfig {
   progress_color?: string;
   show_previous_week?: boolean;
   show_adjustments?: boolean;
+  adjustment_visibility?: ButtonVisibility;
   rewards?: RewardTier[];
   buttons?: OverviewButton[];
   daily_action?: ActionConfig;

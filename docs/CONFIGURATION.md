@@ -43,6 +43,10 @@ person_size: medium
 show_points: true
 show_previous_week: true
 show_adjustments: true
+adjustment_visibility:
+  mode: allow-list
+  users:
+    - parent-user-id
 progress_color: "#00a6d6"
 rewards:
   - points: 20
@@ -70,7 +74,7 @@ buttons:
 
 Rewards define progress targets. `progress_color` applies before the first reward; an optional reward color applies at its threshold. `goal_points` remains a YAML compatibility fallback.
 
-Up to three buttons may use standard Home Assistant tap, hold, and double-tap actions. Button visibility changes presentation only.
+Point adjustments and up to three buttons may use `all`, `administrators`, `allow-list`, or `deny-list` visibility. These rules change presentation only; any authenticated Home Assistant user can call the adjustment API directly. Buttons also support standard Home Assistant tap, hold, and double-tap actions.
 
 ## History card
 

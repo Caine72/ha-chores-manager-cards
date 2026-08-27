@@ -12,7 +12,13 @@ import type {
   OverviewCardConfig,
 } from "./types";
 
-type EditorConfig = (CorrectionCardConfig | DailyCardConfig | HistoryCardConfig | OverviewCardConfig) & { type?: string };
+type EditorConfig = (
+  CorrectionCardConfig | DailyCardConfig | HistoryCardConfig | OverviewCardConfig
+) & {
+  type?: string;
+  adjustment_visibility_mode?: ButtonVisibilityMode;
+  adjustment_visibility_users?: string[];
+};
 type EditorKind = "correction" | "daily" | "history" | "overview";
 type FormValueChangedEvent<T> = CustomEvent<{ value: T }>;
 interface UserOption {
@@ -51,6 +57,13 @@ const BUTTON_PRESETS: OverviewButton[] = [
   { label: "Chores", icon: "mdi:format-list-checks", color: "#00bcd4" },
   { label: "History", icon: "mdi:trophy-outline", color: "#ffc107" },
   { label: "Correction", icon: "mdi:wrench-cog", color: "#9c27b0" },
+];
+
+const VISIBILITY_OPTIONS = [
+  { label: "All users", value: "all" },
+  { label: "Administrators", value: "administrators" },
+  { label: "Allow selected users", value: "allow-list" },
+  { label: "Hide from selected users", value: "deny-list" },
 ];
 
 function toEditorButton(button: OverviewButton): EditorButton {
@@ -195,7 +208,7 @@ abstract class ChoresManagerCardEditor extends LitElement {
     const childId = entityConfig.child_id ?? (entityConfig.child_entity
       ? this.hass.states[entityConfig.child_entity]?.attributes.child_id
       : undefined);
-    return typeof childId === "string"
+    const data = typeof childId === "string"
       ? {
           ...this.config,
           child_id: childId,
@@ -203,6 +216,15 @@ abstract class ChoresManagerCardEditor extends LitElement {
             entityConfig.weekly_points_entity ?? this.matchingWeeklyPointsEntity(childId),
         }
       : this.config;
+    if (this.kind !== "overview") {
+      return data;
+    }
+    const overview = this.config as OverviewCardConfig;
+    return {
+      ...data,
+      adjustment_visibility_mode: overview.adjustment_visibility?.mode ?? "all",
+      adjustment_visibility_users: overview.adjustment_visibility?.users ?? [],
+    };
   }
 
   private schema() {
@@ -313,6 +335,29 @@ abstract class ChoresManagerCardEditor extends LitElement {
         ],
       },
       {
+        type: "expandable",
+        name: "adjustment_visibility_settings",
+        title: this.label("adjustment_visibility"),
+        flatten: true,
+        schema: [
+          {
+            name: "adjustment_visibility_mode",
+            selector: {
+              select: {
+                mode: "dropdown",
+                options: VISIBILITY_OPTIONS,
+              },
+            },
+          },
+          {
+            name: "adjustment_visibility_users",
+            selector: this.visibilityUsersSelector(
+              (this.config as OverviewCardConfig).adjustment_visibility?.users,
+            ),
+          },
+        ],
+      },
+      {
         name: "rewards",
         selector: {
           object: {
@@ -333,39 +378,41 @@ abstract class ChoresManagerCardEditor extends LitElement {
   private renderButtonEditors() {
     const buttons = (this.config as OverviewCardConfig).buttons ?? [];
     return html`
-      <section class="button-editors">
-        <h2>${this.label("buttons")}</h2>
-        ${buttons.map(
-          (button, index) => html`
-            <section class="button-editor">
-              <div class="button-editor-heading">
-                <h3>${button.label || `${this.label("button")} ${index + 1}`}</h3>
-                <ha-icon-button
-                  .label=${this.label("remove_button")}
-                  title=${this.label("remove_button")}
-                  path="M19,13H5V11H19V13Z"
-                  @click=${() => this.removeButton(index)}
-                ></ha-icon-button>
-              </div>
-              <ha-form
-                .hass=${this.hass}
-                .data=${toEditorButton(button)}
-                .schema=${this.buttonSchema(toEditorButton(button))}
-                .computeLabel=${this.computeLabel}
-                @value-changed=${(event: FormValueChangedEvent<EditorButton>) =>
-                  this.onButtonValueChanged(index, event)}
-              ></ha-form>
-            </section>
-          `,
-        )}
-        ${buttons.length < 3
-          ? html`
-              <button class="add-button" @click=${this.addButton}>
-                <ha-icon icon="mdi:plus"></ha-icon>${this.label("add_button")}
-              </button>
-            `
-          : nothing}
-      </section>
+      <ha-expansion-panel class="buttons-panel" outlined>
+        <h2 slot="header">${this.label("buttons")}</h2>
+        <section class="button-editors">
+          ${buttons.map(
+            (button, index) => html`
+              <section class="button-editor">
+                <div class="button-editor-heading">
+                  <h3>${button.label || `${this.label("button")} ${index + 1}`}</h3>
+                  <ha-icon-button
+                    .label=${this.label("remove_button")}
+                    title=${this.label("remove_button")}
+                    path="M19,13H5V11H19V13Z"
+                    @click=${() => this.removeButton(index)}
+                  ></ha-icon-button>
+                </div>
+                <ha-form
+                  .hass=${this.hass}
+                  .data=${toEditorButton(button)}
+                  .schema=${this.buttonSchema(toEditorButton(button))}
+                  .computeLabel=${this.computeLabel}
+                  @value-changed=${(event: FormValueChangedEvent<EditorButton>) =>
+                    this.onButtonValueChanged(index, event)}
+                ></ha-form>
+              </section>
+            `,
+          )}
+          ${buttons.length < 3
+            ? html`
+                <button class="add-button" @click=${this.addButton}>
+                  <ha-icon icon="mdi:plus"></ha-icon>${this.label("add_button")}
+                </button>
+              `
+            : nothing}
+        </section>
+      </ha-expansion-panel>
     `;
   }
 
@@ -382,31 +429,30 @@ abstract class ChoresManagerCardEditor extends LitElement {
         selector: {
           select: {
             mode: "dropdown",
-            options: [
-              { label: "All users", value: "all" },
-              { label: "Administrators", value: "administrators" },
-              { label: "Allow selected users", value: "allow-list" },
-              { label: "Hide from selected users", value: "deny-list" },
-            ],
+            options: VISIBILITY_OPTIONS,
           },
         },
       },
     ];
-    const users = new Map(this.users.map((user) => [user.id, user.name]));
-    for (const userId of button.visibility_users ?? []) {
-      users.set(userId, users.get(userId) ?? userId);
-    }
     fields.push({
       name: "visibility_users",
-      selector: {
-        select: {
-          multiple: true,
-          mode: "dropdown",
-          options: [...users].map(([value, label]) => ({ value, label })),
-        },
-      },
+      selector: this.visibilityUsersSelector(button.visibility_users),
     });
     return fields;
+  }
+
+  private visibilityUsersSelector(selectedUserIds: string[] = []) {
+    const users = new Map(this.users.map((user) => [user.id, user.name]));
+    for (const userId of selectedUserIds) {
+      users.set(userId, users.get(userId) ?? userId);
+    }
+    return {
+      select: {
+        multiple: true,
+        mode: "dropdown",
+        options: [...users].map(([value, label]) => ({ value, label })),
+      },
+    };
   }
 
   private onFormValueChanged(event: FormValueChangedEvent<EditorConfig>): void {
@@ -417,13 +463,35 @@ abstract class ChoresManagerCardEditor extends LitElement {
       this.emitConfigChanged();
       return;
     }
-    const entityValue = value as DailyCardConfig | HistoryCardConfig | OverviewCardConfig;
+    let configValue = value;
+    if (this.kind === "overview") {
+      const existing = this.config as OverviewCardConfig;
+      const {
+        adjustment_visibility_mode,
+        adjustment_visibility_users,
+        ...fields
+      } = value;
+      configValue = {
+        ...fields,
+        adjustment_visibility: {
+          mode:
+            adjustment_visibility_mode ??
+            existing.adjustment_visibility?.mode ??
+            "all",
+          users:
+            adjustment_visibility_users ??
+            existing.adjustment_visibility?.users ??
+            [],
+        },
+      };
+    }
+    const entityValue = configValue as DailyCardConfig | HistoryCardConfig | OverviewCardConfig;
     const entityConfig = this.config as DailyCardConfig | HistoryCardConfig | OverviewCardConfig;
     const changedChild = entityValue.child_id !== entityConfig.child_id;
     this.config = defaults(
       {
         ...this.config,
-        ...value,
+        ...configValue,
         weekly_points_entity:
           changedChild && this.hass
             ? this.matchingWeeklyPointsEntity(entityValue.child_id)
@@ -511,6 +579,7 @@ abstract class ChoresManagerCardEditor extends LitElement {
             ? "Visa poäng"
             : "Visa poäng och belöningsmeddelande",
           show_previous_week: "Visa förra veckans poäng", show_adjustments: "Visa poängjustering",
+          adjustment_visibility: "Synlighet för poängjustering", adjustment_visibility_mode: "Synlig för", adjustment_visibility_users: "Användare",
           tap_action: "Tryck", visibility_mode: "Synlig för", visibility_users: "Användare",
           weekly_points_entity: "Veckopoäng",
         }
@@ -528,6 +597,7 @@ abstract class ChoresManagerCardEditor extends LitElement {
             ? "Show points"
             : "Show points and reward message",
           show_previous_week: "Show previous-week points", show_adjustments: "Show point adjustment",
+          adjustment_visibility: "Point adjustment visibility", adjustment_visibility_mode: "Visible to", adjustment_visibility_users: "Users",
           tap_action: "Tap behavior", visibility_mode: "Visible to", visibility_users: "Users",
           weekly_points_entity: "Weekly points",
         };
@@ -536,8 +606,9 @@ abstract class ChoresManagerCardEditor extends LitElement {
 
   static styles = css`
     :host { display: block; }
-    .button-editors { display: grid; gap: 12px; margin-top: 24px; }
-    .button-editors h2, .button-editor h3 { margin: 0; font-size: 16px; }
+    .buttons-panel { display: block; margin-top: 24px; }
+    .buttons-panel h2, .button-editor h3 { margin: 0; font-size: 16px; }
+    .button-editors { display: grid; gap: 12px; padding: 0 16px 16px; }
     .button-editor { border: 1px solid var(--divider-color); border-radius: 8px; padding: 12px; }
     .button-editor-heading { align-items: center; display: flex; justify-content: space-between; margin-bottom: 8px; }
     .add-button { align-items: center; background: transparent; border: 1px solid var(--divider-color); border-radius: 8px; color: var(--primary-text-color); cursor: pointer; display: inline-flex; font: inherit; gap: 8px; justify-content: center; min-height: 40px; padding: 0 12px; }
