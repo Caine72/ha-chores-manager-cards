@@ -20,6 +20,7 @@ function createHass(
   completed: boolean,
   points: number,
   callService: HomeAssistant["callService"],
+  sharedClaimantId?: string,
 ): HomeAssistant {
   return {
     states: {
@@ -33,6 +34,13 @@ function createHass(
           category: "Test",
           points: 2,
           sort_order: 1,
+          completion_mode: sharedClaimantId ? "shared" : "independent",
+          ...(sharedClaimantId
+            ? {
+                completed_by_child_id: sharedClaimantId,
+                completed_by_child_name: "Isabelle",
+              }
+            : {}),
         },
       },
       "sensor.kid_28_weekly_points": {
@@ -161,5 +169,19 @@ describe("Chores Manager daily card", () => {
     expect(choreButton(card).disabled).toBe(false);
     expect(choreButton(card).classList.contains("completed")).toBe(false);
     expect(card.shadowRoot?.textContent).toContain("Service unavailable");
+  });
+
+  it("disables a shared chore claimed by another child", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>();
+    const card = createCard(createHass(true, 4, callService, "kid_29"));
+    await card.updateComplete;
+
+    expect(choreButton(card).disabled).toBe(true);
+    expect(choreButton(card).classList).toContain("claimed");
+    expect(card.shadowRoot?.textContent).toContain("Claimed by Isabelle");
+
+    choreButton(card).click();
+
+    expect(callService).not.toHaveBeenCalled();
   });
 });

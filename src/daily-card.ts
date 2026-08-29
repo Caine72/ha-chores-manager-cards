@@ -131,15 +131,26 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
       <section>
         <h2>${category}</h2>
         ${entries.map(
-          (assignment) => html`
+          (assignment) => {
+            const claimedByAnotherChild = this.isClaimedByAnotherChild(assignment);
+            const claimant = assignment.completedByChildName ?? assignment.completedByChildId;
+            return html`
             <button
-              class="chore ${assignment.completed ? "completed" : ""}"
+              class="chore ${assignment.completed ? "completed" : ""} ${claimedByAnotherChild ? "claimed" : ""}"
               data-entity-id=${assignment.entityId}
-              ?disabled=${this.pendingCompletions.has(assignment.entityId)}
+              ?disabled=${this.pendingCompletions.has(assignment.entityId) || claimedByAnotherChild}
+              aria-label=${claimedByAnotherChild && claimant
+                ? `${assignment.title}: ${localize("claimed_by", this.config?.locale, this.hass)} ${claimant}`
+                : assignment.title}
               @click=${() => this.toggleAssignment(assignment)}
             >
               <ha-icon icon=${assignment.icon}></ha-icon>
-              <span class="title">${assignment.title}</span>
+              <span class="details">
+                <span class="title">${assignment.title}</span>
+                ${claimedByAnotherChild && claimant
+                  ? html`<span class="claim">${localize("claimed_by", this.config?.locale, this.hass)} ${claimant}</span>`
+                  : nothing}
+              </span>
               ${this.config?.show_points !== false ? html`<span class="points">${assignment.points}p</span>` : nothing}
               <ha-icon
                 class="check"
@@ -148,14 +159,19 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
                   : "mdi:circle-outline"}
               ></ha-icon>
             </button>
-          `,
+          `;
+          },
         )}
       </section>
     `;
   }
 
   private async toggleAssignment(assignment: ChoreAssignment): Promise<void> {
-    if (!this.hass || this.pendingCompletions.has(assignment.entityId)) {
+    if (
+      !this.hass ||
+      this.pendingCompletions.has(assignment.entityId) ||
+      this.isClaimedByAnotherChild(assignment)
+    ) {
       return;
     }
 
@@ -180,6 +196,15 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
       this.error =
         error instanceof Error ? error.message : "Unable to update chore";
     }
+  }
+
+  private isClaimedByAnotherChild(assignment: ChoreAssignment): boolean {
+    return (
+      assignment.completionMode === "shared" &&
+      assignment.completed &&
+      Boolean(assignment.completedByChildId) &&
+      assignment.completedByChildId !== assignment.childId
+    );
   }
 
   private reconcilePendingCompletions(): void {
@@ -214,8 +239,11 @@ export class ChoresManagerDailyCard extends ChoresManagerBaseCard {
     .chore { width: 100%; min-height: 48px; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 28px; align-items: center; gap: 8px; text-align: left; border: 0; background: transparent; color: var(--primary-text-color); cursor: pointer; font: inherit; }
     .chore:not(:disabled):hover { background: var(--secondary-background-color); }
     .chore:disabled { opacity: 0.55; cursor: progress; }
+    .chore.claimed:disabled { cursor: not-allowed; }
     .chore > ha-icon { color: var(--state-icon-color); }
+    .details { min-width: 0; display: grid; gap: 2px; }
     .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .claim { color: var(--secondary-text-color); font-size: 12px; }
     .points { font-size: 13px; }
     .completed .title { text-decoration: line-through; color: var(--secondary-text-color); }
     .completed .check { color: var(--success-color, #34c759); }

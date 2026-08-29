@@ -40,6 +40,9 @@ Chores Manager `0.7.0` or newer is required.
 2. Open the menu and select **Custom repositories**.
 3. Add `https://github.com/Caine72/ha-chores-manager-cards` with the category **Dashboard**.
 4. Find **Chores Manager Cards** in HACS and install the latest version.
+
+Shared-chore claimant controls in Daily cards require Chores Manager `0.8.0` or
+newer.
 5. Refresh the browser.
 
 ### Manual

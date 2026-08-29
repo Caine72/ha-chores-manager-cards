@@ -1,12 +1,13 @@
-# Current milestone: 0.4.0 adjustment controls
+# Current milestone: 0.5.0 shared chore claims
 
-This release makes overview adjustment controls immediate and configurable.
+This release makes a shared chore safely read-only on every non-claimant Daily
+card.
 
 ## Scope
 
-- configure adjustment visibility with the same modes and user selector as buttons;
-- remove backend capability loading from adjustment rendering;
-- collapse the adjustment visibility and Buttons editor sections;
-- keep direct API access available to authenticated Home Assistant users.
+- read shared-completion claimant attributes from Chores Manager `0.8.0`;
+- mark a shared chore as claimed by another child;
+- disable that row and suppress its switch action;
+- retain normal completion and undo behavior for the claiming child.
 
-See [the release notes](RELEASE_0.4.0.md).
+See [the release notes](RELEASE_0.5.0.md).

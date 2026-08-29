@@ -35,7 +35,8 @@ type TranslationKey =
   | "weekly_chores"
   | "history_error"
   | "history_empty"
-  | "total";
+  | "total"
+  | "claimed_by";
 
 const translations = {
   en: {
@@ -74,6 +75,7 @@ const translations = {
     history_error: "Chore history could not be loaded.",
     history_empty: "No chores logged this week.",
     total: "Total",
+    claimed_by: "Claimed by",
   },
   sv: {
     chores: "Sysslor",
@@ -111,6 +113,7 @@ const translations = {
     history_error: "Historiken kunde inte hämtas.",
     history_empty: "Inga sysslor registrerade den här veckan.",
     total: "Totalt",
+    claimed_by: "Tagen av",
   },
 } as const;
 

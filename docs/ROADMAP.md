@@ -8,11 +8,10 @@
 - [x] Entity-authorized current-week history.
 - [x] Visual editors, border controls, localization, and optional Person portraits.
 
-## Current release: 0.4.0
+## Current release: 0.5.0
 
-- [x] Add user visibility rules for overview point adjustments.
-- [x] Remove adjustment capability loading from the render path.
-- [x] Add collapsible adjustment and button editor sections.
+- [x] Disable shared chores already claimed by a different child.
+- [x] Identify the child who claimed the shared occurrence.
 
 ## Later
 

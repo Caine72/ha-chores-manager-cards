@@ -111,6 +111,15 @@ function getStateIndex(hass: HomeAssistant): StateIndex {
           "mdi:checkbox-marked-circle-outline",
         sortOrder: numberAttribute(entity, "sort_order"),
         completed: entity.state === "on",
+        completionMode:
+          attribute<string>(entity, "completion_mode") === "shared"
+            ? "shared"
+            : "independent",
+        completedByChildId: attribute<string>(entity, "completed_by_child_id"),
+        completedByChildName: attribute<string>(
+          entity,
+          "completed_by_child_name",
+        ),
       });
       assignmentsByChild.set(childId, assignments);
     }
