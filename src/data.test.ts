@@ -76,6 +76,30 @@ describe("Chores Manager state adapter", () => {
     ]);
   });
 
+  it("preserves shared completion claimant metadata", () => {
+    const sharedHass: HomeAssistant = {
+      ...hass,
+      states: {
+        ...hass.states,
+        "switch.kid_1_chore_2": {
+          ...hass.states["switch.kid_1_chore_2"],
+          attributes: {
+            ...hass.states["switch.kid_1_chore_2"].attributes,
+            completion_mode: "shared",
+            completed_by_child_id: "kid_2",
+            completed_by_child_name: "Isabelle",
+          },
+        },
+      },
+    };
+
+    expect(getAssignments(sharedHass, "kid_1")[0]).toMatchObject({
+      completionMode: "shared",
+      completedByChildId: "kid_2",
+      completedByChildName: "Isabelle",
+    });
+  });
+
   it("reads the weekly-points sensor rather than an assignment switch", () => {
     expect(getWeeklyPoints(hass, "kid_1")).toBe(3);
   });

@@ -125,6 +125,9 @@ export interface ChoreAssignment {
   icon: string;
   sortOrder: number;
   completed: boolean;
+  completionMode: "independent" | "shared";
+  completedByChildId?: string;
+  completedByChildName?: string;
 }
 
 export interface RewardTier {

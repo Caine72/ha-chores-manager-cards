@@ -166,6 +166,33 @@ test("registers and renders every card and editor in Home Assistant", async ({ p
       editorForms[type] = Boolean(editor.shadowRoot?.querySelector("ha-form"));
     }
 
+    const sharedHass = {
+      ...hass,
+      states: {
+        ...hass.states,
+        "switch.kid_1_chore_1": {
+          ...hass.states["switch.kid_1_chore_1"],
+          state: "on",
+          attributes: {
+            ...hass.states["switch.kid_1_chore_1"].attributes,
+            completion_mode: "shared",
+            completed_by_child_id: "kid_2",
+            completed_by_child_name: "Isabelle",
+          },
+        },
+      },
+    };
+    const sharedCard = document.createElement("chores-manager-daily-card") as unknown as HTMLElement & {
+      hass: typeof hass;
+      setConfig: (config: Record<string, unknown>) => void;
+      updateComplete: Promise<boolean>;
+    };
+    sharedCard.hass = sharedHass;
+    sharedCard.setConfig({ child_id: "kid_1" });
+    document.body.append(sharedCard);
+    await sharedCard.updateComplete;
+    const sharedButton = sharedCard.shadowRoot?.querySelector(".chore") as HTMLButtonElement;
+
     return {
       registeredCards: cardTypes.filter((type) => customElements.get(type)),
       registeredEditors: editorTypes.filter((type) => customElements.get(type)),
@@ -174,6 +201,10 @@ test("registers and renders every card and editor in Home Assistant", async ({ p
         .filter((type) => cardTypes.includes(type)) ?? [],
       renderText,
       editorForms,
+      sharedClaim: {
+        disabled: sharedButton.disabled,
+        text: sharedCard.shadowRoot?.textContent ?? "",
+      },
     };
   });
 
@@ -185,5 +216,7 @@ test("registers and renders every card and editor in Home Assistant", async ({ p
   expect(result.renderText["chores-manager-overview-card"]).toContain("7 / 20 points");
   expect(result.renderText["chores-manager-history-card"]).toContain("Test chore");
   expect(result.renderText["chores-manager-correction-card"]).toContain("Test chore");
+  expect(result.sharedClaim.disabled).toBe(true);
+  expect(result.sharedClaim.text).toContain("Claimed by Isabelle");
   expect(pageErrors).toEqual([]);
 });

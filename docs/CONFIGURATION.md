@@ -30,6 +30,11 @@ locale: auto
 
 The card discovers active assignment switches visible to the current Home Assistant user. Toggling a row calls `switch.turn_on` or `switch.turn_off` and shows an immediate pending state.
 
+With Chores Manager `0.8.0` or newer, a shared chore claimed by a different
+child is shown as completed but disabled on this child's Daily card. The row
+identifies the child who claimed it; only the claimant can undo it from their
+Daily card.
+
 ## Overview card
 
 ```yaml
