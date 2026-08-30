@@ -128,6 +128,7 @@ export interface ChoreAssignment {
   completionMode: "independent" | "shared";
   completedByChildId?: string;
   completedByChildName?: string;
+  completedManually?: boolean;
 }
 
 export interface RewardTier {
@@ -186,6 +187,54 @@ export interface BaseCardConfig {
 }
 
 export type DailyCardConfig = BaseCardConfig;
+
+export interface QuickChoreChildConfig {
+  child_id: string;
+  person_entity?: string;
+  /** Optional display-name customization. The child's backend name is used by default. */
+  display_name?: string;
+}
+
+export interface QuickChoreSlotConfig {
+  chore_id: string;
+  /** Optional display-name customization. The chore name is used by default. */
+  display_name?: string;
+  /** @deprecated Use display_name. */
+  label?: string;
+  subtitle?: string;
+  start_time?: string;
+  end_time?: string;
+  /** Optional icon for the action button. The chore icon is used by default. */
+  icon?: string;
+  /** Optional colour for the action-button icon. */
+  color?: string;
+  /** Editor behavior for the optional action-button icon colour. */
+  color_mode?: "automatic" | "custom";
+  /** @deprecated Use icon for an explicit action-button icon. */
+  manual_icon_override?: string;
+  /** @deprecated Use color for an explicit action-button icon colour. */
+  manual_icon_color?: string;
+  /** @deprecated Use icon for an explicit action-button icon. */
+  icon_override?: string;
+}
+
+export interface QuickChoreCardConfig {
+  title?: string;
+  locale?: "auto" | "en" | "sv";
+  show_border?: boolean;
+  status_layout?: "rows" | "columns";
+  /** Overall spacing for the card layout. Compact preserves the original Quick Chore layout. */
+  density?: "compact" | "normal" | "comfortable";
+  shortcut_mode?: "first_incomplete" | "time_window";
+  /** Size of the portrait buttons in the shortcut section. */
+  shortcut_person_size?: "small" | "medium" | "large";
+  shortcut_label?: string;
+  manual_label?: string;
+  show_manual_actions?: boolean;
+  show_reset_action?: boolean;
+  children: QuickChoreChildConfig[];
+  chores: QuickChoreSlotConfig[];
+}
 
 export interface HistoryCardConfig extends BaseCardConfig {
   child_id: string;

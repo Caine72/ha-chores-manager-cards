@@ -27,8 +27,12 @@ Click a preview to open the full-size image.
 - **Overview** — weekly progress, rewards, previous-week points, user-visible adjustments, and dashboard actions.
 - **History** — completed chores grouped by day within the current chore week.
 - **Correction** — administrator controls for adding or removing dated current-week completions.
+- **Quick Chore** — shared-chore status, child portrait shortcuts, manual household completion, and optional reset controls.
 
-All cards support visual configuration, Swedish and English presentation, border controls, and portraits from a Home Assistant Person associated with the selected child. Daily, History, and Correction can also hide their standalone headers for popup placement.
+All cards support visual configuration, Swedish and English presentation, and
+border controls. Portrait-capable cards use Home Assistant Persons associated
+with their selected children. Daily, History, and Correction can also hide their
+standalone headers for popup placement.
 
 ## Installation
 
@@ -41,9 +45,11 @@ Chores Manager `0.7.0` or newer is required.
 3. Add `https://github.com/Caine72/ha-chores-manager-cards` with the category **Dashboard**.
 4. Find **Chores Manager Cards** in HACS and install the latest version.
 
-Shared-chore claimant controls in Daily cards require Chores Manager `0.8.0` or
-newer.
 5. Refresh the browser.
+
+Shared-chore claimant controls in Daily cards require Chores Manager `0.8.0` or
+newer. The Quick Chore card's manual completion and reset controls require
+Chores Manager `0.9.0` or newer.
 
 ### Manual
 

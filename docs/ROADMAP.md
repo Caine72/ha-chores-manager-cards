@@ -7,11 +7,14 @@
 - [x] Administrator correction within the backend-owned current chore week.
 - [x] Entity-authorized current-week history.
 - [x] Visual editors, border controls, localization, and optional Person portraits.
+- [x] Reusable Quick Chore interface for shared household tasks.
 
-## Current release: 0.5.0
+## Current release: 0.6.0
 
-- [x] Disable shared chores already claimed by a different child.
-- [x] Identify the child who claimed the shared occurrence.
+- [x] Show multiple shared chores as compact status rows or columns.
+- [x] Provide portrait shortcuts with first-unfinished or time-window behavior.
+- [x] Support zero-point manual completion and optional reset controls.
+- [x] Provide a complete visual editor with reorderable children and chores.
 
 ## Later
 

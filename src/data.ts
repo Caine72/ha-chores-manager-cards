@@ -120,6 +120,7 @@ function getStateIndex(hass: HomeAssistant): StateIndex {
           entity,
           "completed_by_child_name",
         ),
+        completedManually: attribute<boolean>(entity, "completed_manually") === true,
       });
       assignmentsByChild.set(childId, assignments);
     }

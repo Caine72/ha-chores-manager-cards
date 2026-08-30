@@ -36,7 +36,15 @@ type TranslationKey =
   | "history_error"
   | "history_empty"
   | "total"
-  | "claimed_by";
+  | "claimed_by"
+  | "quick_shortcut"
+  | "quick_manual"
+  | "quick_not_completed"
+  | "quick_completed_by"
+  | "quick_completed_manually"
+  | "quick_reset"
+  | "quick_reset_all"
+  | "quick_action_error";
 
 const translations = {
   en: {
@@ -76,6 +84,14 @@ const translations = {
     history_empty: "No chores logged this week.",
     total: "Total",
     claimed_by: "Claimed by",
+    quick_shortcut: "Shortcut",
+    quick_manual: "Manual",
+    quick_not_completed: "Not completed yet",
+    quick_completed_by: "Completed by",
+    quick_completed_manually: "Completed manually",
+    quick_reset: "Reset",
+    quick_reset_all: "Reset all",
+    quick_action_error: "The action could not be saved.",
   },
   sv: {
     chores: "Sysslor",
@@ -114,6 +130,14 @@ const translations = {
     history_empty: "Inga sysslor registrerade den här veckan.",
     total: "Totalt",
     claimed_by: "Tagen av",
+    quick_shortcut: "Genväg",
+    quick_manual: "Manuell",
+    quick_not_completed: "Ej ännu utförd",
+    quick_completed_by: "Utförd av",
+    quick_completed_manually: "Utförd manuellt",
+    quick_reset: "Återställ",
+    quick_reset_all: "Återställ alla",
+    quick_action_error: "Åtgärden kunde inte sparas.",
   },
 } as const;
 

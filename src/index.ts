@@ -3,8 +3,10 @@ import "./correction-card";
 import "./editor";
 import "./history-card";
 import "./overview-card";
+import "./quick-chore-card";
+import "./quick-chore-editor";
 
-import { CARD_VERSION, CORRECTION_CARD_TYPE, DAILY_CARD_TYPE, HISTORY_CARD_TYPE, OVERVIEW_CARD_TYPE } from "./const";
+import { CARD_VERSION, CORRECTION_CARD_TYPE, DAILY_CARD_TYPE, HISTORY_CARD_TYPE, OVERVIEW_CARD_TYPE, QUICK_CHORE_CARD_TYPE } from "./const";
 
 declare global {
   interface Window {
@@ -47,6 +49,12 @@ window.customCards.push(
     type: OVERVIEW_CARD_TYPE,
     name: "Chores Manager Overview",
     description: "Child points and reward overview.",
+    preview: false,
+  },
+  {
+    type: QUICK_CHORE_CARD_TYPE,
+    name: "Chores Manager Quick Chore",
+    description: "Compact shared-chore status and claim controls.",
     preview: false,
   },
 );
