@@ -10,6 +10,7 @@ Chores Manager Cards is a frontend-only package. The integration owns children, 
 | Overview | Visible entities and `chores_manager/weekly_points` | `chores_manager/adjust_weekly_points` | `read` permission for totals; authenticated connection for adjustments |
 | History | `chores_manager/current_week_history` | None | Weekly-points sensor `read` permission |
 | Correction | Inventory, current-week completions, and weekly points | `chores_manager/set_current_week_completion` | Administrator-only backend commands |
+| Quick Chore | Visible assignment switches | Assignment switches; `chores_manager.complete_chore_manually`, `chores_manager.reset_manual_chore_completion` | Home Assistant entity visibility and service permissions |
 
 Conditional rendering is presentation, not authorization. It does not restrict direct API calls; each backend command applies its documented authentication or authorization policy.
 
@@ -27,7 +28,7 @@ The integration stores no image files. The association is a presentation hint an
 
 ## Refresh behavior
 
-Visible entity changes update child-facing state through Home Assistant. Overview, history, and correction API data reload when the selected child, connection, weekly-points entity, or backend week boundary changes. Consumers use returned week dates rather than calculating a reset weekday.
+Visible entity changes update child-facing state through Home Assistant. Overview, history, and correction API data reload when the selected child, connection, weekly-points entity, or backend week boundary changes. Quick Chore derives shared status and claimant portraits from visible assignment-switch attributes. Consumers use returned week dates rather than calculating a reset weekday.
 
 ## Optional wrappers
 

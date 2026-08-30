@@ -18,6 +18,7 @@ test("registers and renders every card and editor in Home Assistant", async ({ p
       "chores-manager-overview-card",
       "chores-manager-history-card",
       "chores-manager-correction-card",
+      "chores-manager-quick-chore-card",
     ];
     const editorTypes = cardTypes.map((type) => `${type}-editor`);
     const completion = {
@@ -107,6 +108,7 @@ test("registers and renders every card and editor in Home Assistant", async ({ p
           attributes: {
             assignment_id: "assignment_1",
             child_id: "kid_1",
+            chore_id: "chore_1",
             kid_name: "Acceptance Avery",
             title: "Test chore",
             category: "Morning",
@@ -134,6 +136,12 @@ test("registers and renders every card and editor in Home Assistant", async ({ p
       "chores-manager-overview-card": { child_id: "kid_1", goal_points: 20 },
       "chores-manager-history-card": { child_id: "kid_1" },
       "chores-manager-correction-card": { child_id: "kid_1" },
+      "chores-manager-quick-chore-card": {
+        title: "Quick chore",
+        children: [{ child_id: "kid_1" }],
+        chores: [{ chore_id: "chore_1", label: "Test chore" }],
+        show_reset_action: true,
+      },
     };
 
     const renderText: Record<string, string> = {};
@@ -160,7 +168,7 @@ test("registers and renders every card and editor in Home Assistant", async ({ p
         updateComplete: Promise<boolean>;
       };
       editor.hass = hass;
-      editor.setConfig({ child_id: "kid_1" });
+      editor.setConfig(configs[cardTypes.find((type) => `${type}-editor` === editor.tagName.toLowerCase()) ?? "chores-manager-daily-card"]);
       document.body.append(editor);
       await editor.updateComplete;
       editorForms[type] = Boolean(editor.shadowRoot?.querySelector("ha-form"));
@@ -208,9 +216,9 @@ test("registers and renders every card and editor in Home Assistant", async ({ p
     };
   });
 
-  expect(result.registeredCards).toHaveLength(4);
-  expect(result.registeredEditors).toHaveLength(4);
-  expect(result.listedCards).toHaveLength(4);
+  expect(result.registeredCards).toHaveLength(5);
+  expect(result.registeredEditors).toHaveLength(5);
+  expect(result.listedCards).toHaveLength(5);
   expect(Object.values(result.editorForms)).not.toContain(false);
   expect(result.renderText["chores-manager-daily-card"]).toContain("Test chore");
   expect(result.renderText["chores-manager-overview-card"]).toContain("7 / 20 points");
