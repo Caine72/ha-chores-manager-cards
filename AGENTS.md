@@ -10,7 +10,7 @@ This repository contains frontend-only Home Assistant Lovelace cards for Chores 
 - Stable IDs and WebSocket contracts are backend-owned interfaces.
 - Daily and overview cards must work for non-admin users using entities visible to their Home Assistant user.
 - Never treat conditional card rendering as authorization.
-- History needs a backend-enforced parent authorization milestone before non-admin parents can use it.
+- History uses backend-enforced entity authorization for non-admin users.
 - Correction remains admin-only.
 - Bubble Card, Mushroom, Bar Card, helper entities, counters, To-do lists, scripts, and automations are migration references only. Do not add them as runtime dependencies.
 
@@ -30,4 +30,3 @@ in-flight reads, and reuse of unchanged derived data.
 
 - Repository: `/workspaces/ha-chores-manager-cards`
 - Backend: `/workspaces/ha-chores-manager`
-- Legacy migration references: `/workspaces/card resources`
