@@ -21,6 +21,9 @@ Click a preview to open the full-size image.
 | --- | --- |
 | <a href="docs/images/history-card.png"><img src="docs/images/history-card.png" alt="History card showing completed chores grouped by day" height="280"></a> | <a href="docs/images/correction-card.png"><img src="docs/images/correction-card.png" alt="Correction card showing dated add and remove controls" height="280"></a> |
 
+Screenshots use fictional test data and an AI-generated generic avatar; they do
+not contain a real person's likeness or household data.
+
 ## Cards
 
 - **Daily** — grouped chores with point values and immediate completion controls.
@@ -67,6 +70,4 @@ See the [configuration guide](docs/CONFIGURATION.md) for YAML examples, display 
 
 - [Configuration](docs/CONFIGURATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Performance](docs/PERFORMANCE.md)
-- [Migration notes](docs/LEGACY_ANALYSIS.md)
 - [Roadmap](docs/ROADMAP.md)

@@ -6,7 +6,7 @@ This repository contains frontend-only Home Assistant Lovelace cards for Chores 
 
 ## Architecture
 
-- Require Chores Manager version `0.3.0` or newer.
+- Require Chores Manager version `0.7.0` or newer.
 - Stable IDs and WebSocket contracts are backend-owned interfaces.
 - Daily and overview cards must work for non-admin users using entities visible to their Home Assistant user.
 - Never treat conditional card rendering as authorization.
@@ -16,11 +16,15 @@ This repository contains frontend-only Home Assistant Lovelace cards for Chores 
 
 ## Development workflow
 
-1. Inspect `git status`, `docs/ROADMAP.md`, and `docs/NEXT_MILESTONE.md` before work.
+1. Inspect `git status` and `docs/ROADMAP.md` before work.
 2. Work on a branch and open a pull request for every change after the initial repository bootstrap.
 3. Run `yarn validate` and `git diff --check` before committing.
 4. Do not create a GitHub release until the merged commit's GitHub Actions have passed.
 5. Validate UI changes against a live Home Assistant instance at desktop and mobile viewport sizes.
+
+For performance-sensitive changes, run `yarn test:performance`. The regression
+suite covers state-registry enumeration, unrelated-state renders, duplicate
+in-flight reads, and reuse of unchanged derived data.
 
 ## Environment
 
