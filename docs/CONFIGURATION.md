@@ -94,7 +94,7 @@ show_person: true
 show_points: true
 ```
 
-The card shows immutable completion snapshots from the backend-owned current chore week, grouped by local date with optional row points and daily totals.
+The card shows immutable completion snapshots from the backend-owned current chore week, grouped by local date with optional row points and daily totals. Its activity section shows point adjustments and completion changes with the acting Home Assistant user, point delta, and optional reason.
 
 ## Correction card
 

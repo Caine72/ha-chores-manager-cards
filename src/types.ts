@@ -113,6 +113,21 @@ export interface CurrentWeekHistoryResponse extends CurrentWeekCompletionsRespon
   child_name: string;
   person_entity_id?: string;
   points_entity_id: string;
+  activities: PointActivity[];
+}
+
+export interface PointActivity {
+  activity_id: string;
+  occurred_at: string;
+  local_date: string;
+  action: "completion_added" | "completion_removed" | "points_adjusted";
+  child_id: string | null;
+  chore_id: string | null;
+  assignment_id: string | null;
+  points_delta: number;
+  actor_user_id: string | null;
+  actor_name: string;
+  reason?: string;
 }
 
 export interface ChoreAssignment {

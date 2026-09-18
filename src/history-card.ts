@@ -119,7 +119,8 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
 
   private renderHistory() {
     const groups = this.groupedCompletions();
-    if (!groups.size) {
+    const activities = this.history?.activities ?? [];
+    if (!groups.size && !activities.length) {
       return html`<p class="empty">${localize("history_empty", this.config?.locale, this.hass)}</p>`;
     }
     return html`
@@ -127,6 +128,20 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
         ${[...groups.entries()].map(([localDate, completions]) =>
           this.renderDay(localDate, completions),
         )}
+        ${activities.length
+          ? html`<section class="activity">
+              <h2>${localize("activity", this.config?.locale, this.hass)}</h2>
+              <ul>
+                ${[...activities].reverse().map(
+                  (activity) => html`<li>
+                    <span>${localize(`activity_${activity.action}` as "activity_completion_added" | "activity_completion_removed" | "activity_points_adjusted", this.config?.locale, this.hass)}</span>
+                    <span class="points"> · ${activity.points_delta > 0 ? "+" : ""}${activity.points_delta}p</span>
+                    <small>${activity.actor_name}${activity.reason ? ` · ${activity.reason}` : ""}</small>
+                  </li>`,
+                )}
+              </ul>
+            </section>`
+          : nothing}
       </div>
     `;
   }
@@ -248,6 +263,8 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
     h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; text-transform: capitalize; }
     ul { padding-left: 24px; }
     li { line-height: 1.45; margin-bottom: 7px; padding-left: 2px; }
+    .activity li { display: grid; grid-template-columns: 1fr auto; }
+    .activity small { color: var(--secondary-text-color); grid-column: 1 / -1; }
     .points { white-space: nowrap; }
     .total { display: block; font-size: 14px; margin-top: 14px; }
     .empty { color: var(--secondary-text-color); font-style: italic; }
