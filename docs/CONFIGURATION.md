@@ -94,7 +94,7 @@ show_person: true
 show_points: true
 ```
 
-The card shows immutable completion snapshots from the backend-owned current chore week, grouped by local date with optional row points and daily totals.
+The card shows immutable completion snapshots from the backend-owned current chore week, grouped by local date with optional row points and daily totals. Its activity section shows point adjustments and completion changes with the acting Home Assistant user, point delta, and optional reason.
 
 ## Correction card
 
@@ -106,7 +106,7 @@ show_header: true
 show_border: true
 ```
 
-The administrator-only correction card navigates dates within the current chore week and adds or removes completion snapshots through Chores Manager.
+The correction card navigates dates within the current chore week and adds or removes completion snapshots through Chores Manager. It is available to authenticated users; dashboard visibility controls remain presentation rules rather than authorization.
 
 ## Quick Chore card
 

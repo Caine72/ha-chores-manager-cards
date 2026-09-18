@@ -36,7 +36,7 @@ window.customCards.push(
   {
     type: CORRECTION_CARD_TYPE,
     name: "Chores Manager Correction",
-    description: "Admin correction by child and date.",
+    description: "Current-week correction by child and date.",
     preview: false,
   },
   {

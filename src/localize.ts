@@ -35,6 +35,10 @@ type TranslationKey =
   | "weekly_chores"
   | "history_error"
   | "history_empty"
+  | "activity"
+  | "activity_completion_added"
+  | "activity_completion_removed"
+  | "activity_points_adjusted"
   | "total"
   | "claimed_by"
   | "quick_shortcut"
@@ -82,6 +86,10 @@ const translations = {
     weekly_chores: "Weekly chores",
     history_error: "Chore history could not be loaded.",
     history_empty: "No chores logged this week.",
+    activity: "Activity",
+    activity_completion_added: "Completion added",
+    activity_completion_removed: "Completion removed",
+    activity_points_adjusted: "Points adjusted",
     total: "Total",
     claimed_by: "Claimed by",
     quick_shortcut: "Shortcut",
@@ -128,6 +136,10 @@ const translations = {
     weekly_chores: "Veckans sysslor",
     history_error: "Historiken kunde inte hämtas.",
     history_empty: "Inga sysslor registrerade den här veckan.",
+    activity: "Aktivitet",
+    activity_completion_added: "Genomförd syssla tillagd",
+    activity_completion_removed: "Genomförd syssla borttagen",
+    activity_points_adjusted: "Poäng justerade",
     total: "Totalt",
     claimed_by: "Tagen av",
     quick_shortcut: "Genväg",
