@@ -15,6 +15,7 @@ function response(
     points_entity_id: "sensor.kid_1_weekly_points",
     window: { start: "2026-08-21", end: "2026-08-27" },
     completions,
+    activities: [],
   };
 }
 
@@ -83,6 +84,33 @@ async function settle(card: ChoresManagerHistoryCard): Promise<void> {
 afterEach(() => document.body.replaceChildren());
 
 describe("Chores Manager history card", () => {
+  it("shows who performed point-affecting activity", async () => {
+    const history = response([]);
+    history.activities = [{
+      activity_id: "activity_1",
+      occurred_at: "2026-08-22T08:00:00+00:00",
+      local_date: "2026-08-22",
+      action: "points_adjusted",
+      child_id: "kid_1",
+      chore_id: null,
+      assignment_id: null,
+      points_delta: 6,
+      actor_user_id: "parent_1",
+      actor_name: "Parent",
+      reason: "Bonus",
+    }];
+    const { hass } = apiHass(history);
+    const card = new ChoresManagerHistoryCard();
+    card.hass = hass;
+    card.setConfig({ child_id: "kid_1" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelector(".activity")?.textContent).toContain("Poäng justerade");
+    expect(card.shadowRoot?.querySelector(".activity")?.textContent).toContain("+6p");
+    expect(card.shadowRoot?.querySelector(".activity")?.textContent).toContain("Parent · Bonus");
+  });
+
   it("renders a localized current-week history grouped by ascending date", async () => {
     const { hass, send } = apiHass(response([
       completion("3", "2026-08-22", "Ge katten mat", "Katten", 1),

@@ -127,6 +127,7 @@ describe("card performance regressions", () => {
       child_id: "kid_1",
       child_name: "Avery",
       points_entity_id: "sensor.kid_1_weekly_points",
+      activities: [],
       window: { start: "2026-08-21", end: "2026-08-27" },
       completions: [
         {
@@ -162,6 +163,7 @@ describe("card performance regressions", () => {
       child_id: "kid_1",
       child_name: "Avery",
       points_entity_id: "sensor.kid_1_weekly_points",
+      activities: [],
       window: { start: "2026-08-21", end: "2026-08-27" },
       completions: [],
     };

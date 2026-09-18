@@ -80,6 +80,7 @@ test("registers and renders every card and editor in Home Assistant", async ({ p
           case "chores_manager/current_week_history":
             return {
               ...weeklyPoints,
+              activities: [],
               window: { start: "2026-08-22", end: "2026-08-23" },
               completions: [completion],
             };

@@ -39,7 +39,7 @@ standalone headers for popup placement.
 
 ## Installation
 
-Chores Manager `0.7.0` or newer is required.
+Chores Manager `0.10.0` or newer is required.
 
 ### HACS
 
