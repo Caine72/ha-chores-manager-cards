@@ -106,7 +106,7 @@ show_header: true
 show_border: true
 ```
 
-The administrator-only correction card navigates dates within the current chore week and adds or removes completion snapshots through Chores Manager.
+The correction card navigates dates within the current chore week and adds or removes completion snapshots through Chores Manager. It is available to authenticated users; dashboard visibility controls remain presentation rules rather than authorization.
 
 ## Quick Chore card
 
