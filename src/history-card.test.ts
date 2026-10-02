@@ -84,32 +84,51 @@ async function settle(card: ChoresManagerHistoryCard): Promise<void> {
 afterEach(() => document.body.replaceChildren());
 
 describe("Chores Manager history card", () => {
-  it("shows who performed point-affecting activity", async () => {
-    const history = response([]);
-    history.activities = [{
-      activity_id: "activity_1",
-      occurred_at: "2026-08-22T08:00:00+00:00",
-      local_date: "2026-08-22",
-      action: "points_adjusted",
-      child_id: "kid_1",
-      chore_id: null,
-      assignment_id: null,
-      points_delta: 6,
-      actor_user_id: "parent_1",
-      actor_name: "Parent",
-      reason: "Bonus",
-    }];
-    const { hass } = apiHass(history);
-    const card = new ChoresManagerHistoryCard();
-    card.hass = hass;
-    card.setConfig({ child_id: "kid_1" });
-    document.body.append(card);
-    await settle(card);
+  it.each([false, true])(
+    "omits audit activity with completions=%s",
+    async (hasCompletions) => {
+      const history = response(
+        hasCompletions
+          ? [completion("1", "2026-08-22", "Ge katten mat", "Katten", 1)]
+          : [],
+      );
+      history.activities = [
+        {
+          activity_id: "activity_1",
+          occurred_at: "2026-08-22T08:00:00+00:00",
+          local_date: "2026-08-22",
+          action: "points_adjusted",
+          child_id: "kid_1",
+          chore_id: null,
+          assignment_id: null,
+          points_delta: 6,
+          actor_user_id: "parent_1",
+          actor_name: "Parent",
+          reason: "Bonus",
+        },
+      ];
+      const { hass } = apiHass(history);
+      const card = new ChoresManagerHistoryCard();
+      card.hass = hass;
+      card.setConfig({ child_id: "kid_1" });
+      document.body.append(card);
+      await settle(card);
 
-    expect(card.shadowRoot?.querySelector(".activity")?.textContent).toContain("Poäng justerade");
-    expect(card.shadowRoot?.querySelector(".activity")?.textContent).toContain("+6p");
-    expect(card.shadowRoot?.querySelector(".activity")?.textContent).toContain("Parent · Bonus");
-  });
+      expect(card.shadowRoot?.querySelector(".activity")).toBeNull();
+      expect(card.shadowRoot?.textContent).not.toContain("Parent · Bonus");
+      if (hasCompletions) {
+        expect(card.shadowRoot?.querySelectorAll("section")).toHaveLength(1);
+        expect(card.shadowRoot?.textContent).toContain("Ge katten mat");
+        expect(card.shadowRoot?.querySelector(".total")?.textContent).toBe(
+          "Totalt: 1p",
+        );
+      } else {
+        expect(card.shadowRoot?.querySelector(".empty")?.textContent).toBe(
+          "Inga sysslor registrerade den här veckan.",
+        );
+      }
+    },
+  );
 
   it("renders a localized current-week history grouped by ascending date", async () => {
     const { hass, send } = apiHass(response([

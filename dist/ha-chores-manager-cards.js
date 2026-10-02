@@ -258,19 +258,10 @@ const lt=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
             `:W}
         ${this.loadFailed?L`<p class="error" role="alert">${Ot("history_error",this.config.locale,this.hass)}</p>`:this.history?this.renderHistory():W}
       </ha-card>
-    `}renderHistory(){const t=this.groupedCompletions(),e=this.history?.activities??[];return t.size||e.length?L`
+    `}renderHistory(){const t=this.groupedCompletions();return t.size?L`
       <div class="history">
         ${[...t.entries()].map(([t,e])=>this.renderDay(t,e))}
-        ${e.length?L`<section class="activity">
-              <h2>${Ot("activity",this.config?.locale,this.hass)}</h2>
-              <ul>
-                ${[...e].reverse().map(t=>L`<li>
-                    <span>${Ot(`activity_${t.action}`,this.config?.locale,this.hass)}</span>
-                    <span class="points"> · ${t.points_delta>0?"+":""}${t.points_delta}p</span>
-                    <small>${t.actor_name}${t.reason?` · ${t.reason}`:""}</small>
-                  </li>`)}
-              </ul>
-            </section>`:W}
+
       </div>
     `:L`<p class="empty">${Ot("history_empty",this.config?.locale,this.hass)}</p>`}renderDay(t,e){const i=e.reduce((t,e)=>t+e.points,0);return L`
       <section data-local-date=${t}>
@@ -299,8 +290,6 @@ const lt=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
     h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; text-transform: capitalize; }
     ul { padding-left: 24px; }
     li { line-height: 1.45; margin-bottom: 7px; padding-left: 2px; }
-    .activity li { display: grid; grid-template-columns: 1fr auto; }
-    .activity small { color: var(--secondary-text-color); grid-column: 1 / -1; }
     .points { white-space: nowrap; }
     .total { display: block; font-size: 14px; margin-top: 14px; }
     .empty { color: var(--secondary-text-color); font-style: italic; }
@@ -616,4 +605,4 @@ const lt=t=>(e,i)=>{void 0!==i?i.addInitializer(()=>{customElements.define(t,e)}
     .drag-handle { color: var(--secondary-text-color); }
     .add-child, .add-chore { align-items: center; background: transparent; border: 1px solid var(--divider-color); border-radius: 8px; color: var(--primary-text-color); cursor: pointer; display: inline-flex; font: inherit; gap: 8px; justify-content: center; min-height: 40px; padding: 0 12px; }
     .add-child:disabled, .add-chore:disabled { cursor: not-allowed; opacity: .5; }
-  `}};t([pt({attribute:!1})],_e.prototype,"hass",void 0),t([ut()],_e.prototype,"config",void 0),t([ut()],_e.prototype,"editingChildIndex",void 0),t([ut()],_e.prototype,"editingChildDraft",void 0),t([ut()],_e.prototype,"editingChoreIndex",void 0),t([ut()],_e.prototype,"editingChoreDraft",void 0),_e=t([lt("chores-manager-quick-chore-card-editor")],_e),console.info("%c CHORES MANAGER CARDS %c 0.7.0 ","color: white; background: #1677b8; font-weight: 600;","color: white; background: #444;"),window.customCards=window.customCards??[],window.customCards.push({type:yt,name:"Chores Manager History",description:"Current-week completed chores by child and date.",preview:!1},{type:ft,name:"Chores Manager Correction",description:"Current-week correction by child and date.",preview:!1},{type:gt,name:"Chores Manager Daily",description:"Child-facing daily chore checklist.",preview:!1},{type:_t,name:"Chores Manager Overview",description:"Child points and reward overview.",preview:!1},{type:bt,name:"Chores Manager Quick Chore",description:"Compact shared-chore status and claim controls.",preview:!1});
+  `}};t([pt({attribute:!1})],_e.prototype,"hass",void 0),t([ut()],_e.prototype,"config",void 0),t([ut()],_e.prototype,"editingChildIndex",void 0),t([ut()],_e.prototype,"editingChildDraft",void 0),t([ut()],_e.prototype,"editingChoreIndex",void 0),t([ut()],_e.prototype,"editingChoreDraft",void 0),_e=t([lt("chores-manager-quick-chore-card-editor")],_e),console.info("%c CHORES MANAGER CARDS %c 0.7.1 ","color: white; background: #1677b8; font-weight: 600;","color: white; background: #444;"),window.customCards=window.customCards??[],window.customCards.push({type:yt,name:"Chores Manager History",description:"Current-week completed chores by child and date.",preview:!1},{type:ft,name:"Chores Manager Correction",description:"Current-week correction by child and date.",preview:!1},{type:gt,name:"Chores Manager Daily",description:"Child-facing daily chore checklist.",preview:!1},{type:_t,name:"Chores Manager Overview",description:"Child points and reward overview.",preview:!1},{type:bt,name:"Chores Manager Quick Chore",description:"Compact shared-chore status and claim controls.",preview:!1});
