@@ -1,4 +1,4 @@
-export const CARD_VERSION = "0.7.1";
+export const CARD_VERSION = "0.7.2";
 export const DAILY_CARD_TYPE = "chores-manager-daily-card";
 export const OVERVIEW_CARD_TYPE = "chores-manager-overview-card";
 export const CORRECTION_CARD_TYPE = "chores-manager-correction-card";
