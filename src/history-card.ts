@@ -188,21 +188,34 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
     for (const completion of this.history?.completions ?? []) {
       dayFor(completion.local_date).completions.push(completion);
     }
-    for (const activity of this.history?.activities ?? []) {
-      if (activity.action === "points_adjusted") {
-        dayFor(activity.local_date).adjustments.push(activity);
+    const adjustments = (this.history?.activities ?? [])
+      .filter((activity) => activity.action === "points_adjusted")
+      .sort((left, right) => left.occurred_at.localeCompare(right.occurred_at) ||
+        left.activity_id.localeCompare(right.activity_id));
+    const summaries = new Map<string, PointActivity>();
+    for (const activity of adjustments) {
+      const key = JSON.stringify([
+        activity.local_date,
+        activity.actor_user_id ?? null,
+        activity.actor_name,
+        activity.reason ?? "",
+        Math.sign(activity.points_delta),
+      ]);
+      const summary = summaries.get(key);
+      if (summary) {
+        summary.points_delta += activity.points_delta;
+      } else {
+        const entry = { ...activity };
+        summaries.set(key, entry);
+        dayFor(activity.local_date).adjustments.push(entry);
       }
     }
-    for (const { completions, adjustments } of groups.values()) {
+    for (const { completions } of groups.values()) {
       completions.sort(
         (left, right) =>
           left.category.localeCompare(right.category) ||
           left.chore_title.localeCompare(right.chore_title) ||
           left.completion_id.localeCompare(right.completion_id),
-      );
-      adjustments.sort(
-        (left, right) => left.occurred_at.localeCompare(right.occurred_at) ||
-          left.activity_id.localeCompare(right.activity_id),
       );
     }
     this.groupedHistory = this.history;

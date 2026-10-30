@@ -69,6 +69,28 @@ afterEach(() => {
 });
 
 describe("Chores Manager daily card", () => {
+  it("uses chore switches without point adjustments for a non-admin user", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>().mockResolvedValue(undefined);
+    const sendMessagePromise = vi.fn().mockRejectedValue(new Error("Unexpected adjustment"));
+    const user = { id: "household-user", is_admin: false };
+    const connection = { sendMessagePromise };
+    const card = createCard({ ...createHass(false, 4, callService), user, connection });
+    await card.updateComplete;
+
+    choreButton(card).click();
+    await card.updateComplete;
+    card.hass = { ...createHass(true, 6, callService), user, connection };
+    await card.updateComplete;
+    choreButton(card).click();
+    await card.updateComplete;
+
+    expect(callService.mock.calls).toEqual([
+      ["switch", "turn_on", { entity_id: "switch.kid_28_chore_1" }],
+      ["switch", "turn_off", { entity_id: "switch.kid_28_chore_1" }],
+    ]);
+    expect(sendMessagePromise).not.toHaveBeenCalled();
+  });
+
   it("ignores the removed legacy title property", async () => {
     const card = new ChoresManagerDailyCard();
     card.hass = createHass(false, 4, vi.fn<HomeAssistant["callService"]>());
