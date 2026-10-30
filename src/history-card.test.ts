@@ -169,6 +169,90 @@ describe("Chores Manager history card", () => {
     expect(sections[2].querySelector("time")?.textContent).toBe("Aug 23");
   });
 
+  it.each([true, false])("summarizes ten +1 entries without changing their payload, show_points=%s", async (showPoints) => {
+    const history = response([completion("1", "2026-08-22", "Feed cat", "Cat", 2)]);
+    history.activities = Array.from({ length: 10 }, (_, index) => ({
+      ...adjustment(String(index), "2026-08-22", 1, "Parent"),
+      occurred_at: `2026-08-22T08:${String(index).padStart(2, "0")}:00+00:00`,
+    })).reverse();
+    const original = structuredClone(history);
+    history.activities.forEach(Object.freeze);
+    Object.freeze(history.activities);
+    const { hass } = apiHass(history);
+    const card = new ChoresManagerHistoryCard();
+    card.hass = hass;
+    card.setConfig({ child_id: "kid_1", locale: "en", show_points: showPoints });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelectorAll(".activity")).toHaveLength(1);
+    expect(card.shadowRoot?.querySelector(".activity")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      showPoints ? "Points adjusted · +10p · Parent" : "Points adjusted · Parent",
+    );
+    if (showPoints) {
+      expect(card.shadowRoot?.querySelector(".total")?.textContent).toBe("Total: 12p");
+    } else {
+      expect(card.shadowRoot?.querySelector(".total")).toBeNull();
+      expect(card.shadowRoot?.querySelector(".points")).toBeNull();
+    }
+    expect(history).toEqual(original);
+  });
+
+  it("keeps different actors, reasons, directions and dates separate", async () => {
+    const history = response([]);
+    history.activities = [
+      adjustment("1", "2026-08-22", 1, "Parent", "Bonus"),
+      adjustment("2", "2026-08-22", 2, "Parent", "Bonus"),
+      { ...adjustment("3", "2026-08-22", 4, "Parent", "Bonus"), actor_user_id: "parent_2" },
+      adjustment("4", "2026-08-22", 8, "Parent", "Homework"),
+      adjustment("5", "2026-08-22", -1, "Parent", "Bonus"),
+      adjustment("6", "2026-08-22", -2, "Parent", "Bonus"),
+      adjustment("7", "2026-08-23", 1, "Parent", "Bonus"),
+      { ...adjustment("8", "2026-08-22", 16, "Renamed parent", "Bonus") },
+    ];
+    const { hass } = apiHass(history);
+    const card = new ChoresManagerHistoryCard();
+    card.hass = hass;
+    card.setConfig({ child_id: "kid_1", locale: "en" });
+    document.body.append(card);
+    await settle(card);
+
+    const sections = [...(card.shadowRoot?.querySelectorAll("section") ?? [])];
+    expect(sections.map((section) => section.dataset.localDate)).toEqual(["2026-08-22", "2026-08-23"]);
+    expect([...sections[0].querySelectorAll(".activity")].map((row) => row.textContent?.replace(/\s+/g, " ").trim())).toEqual([
+      "Points adjusted · +3p · Parent · Bonus",
+      "Points adjusted · +4p · Parent · Bonus",
+      "Points adjusted · +8p · Parent · Homework",
+      "Points adjusted · -3p · Parent · Bonus",
+      "Points adjusted · +16p · Renamed parent · Bonus",
+    ]);
+    expect(sections[0].querySelector(".total")?.textContent).toBe("Total: 28p");
+    expect(sections[1].querySelectorAll(".activity")).toHaveLength(1);
+    expect(sections[1].querySelector(".total")?.textContent).toBe("Total: 1p");
+  });
+
+  it("summarizes missing actor IDs by name without mixing known actors", async () => {
+    const history = response([]);
+    history.activities = [
+      { ...adjustment("1", "2026-08-22", 1, "Parent"), actor_user_id: null },
+      { ...adjustment("2", "2026-08-22", 1, "Parent"), actor_user_id: null, reason: "" },
+      { ...adjustment("3", "2026-08-22", 1, "Other"), actor_user_id: null },
+      adjustment("4", "2026-08-22", 1, "Parent"),
+    ];
+    const { hass } = apiHass(history);
+    const card = new ChoresManagerHistoryCard();
+    card.hass = hass;
+    card.setConfig({ child_id: "kid_1", locale: "en" });
+    document.body.append(card);
+    await settle(card);
+
+    expect([...card.shadowRoot!.querySelectorAll(".activity")].map((row) => row.textContent?.replace(/\s+/g, " ").trim())).toEqual([
+      "Points adjusted · +2p · Parent",
+      "Points adjusted · +1p · Other",
+      "Points adjusted · +1p · Parent",
+    ]);
+  });
+
   it("supports history responses without activities", async () => {
     const history = response([completion("1", "2026-08-22", "Feed cat", "Cat", 1)]);
     Reflect.deleteProperty(history, "activities");
