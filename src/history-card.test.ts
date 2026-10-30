@@ -41,6 +41,28 @@ function completion(
   };
 }
 
+function adjustment(
+  activityId: string,
+  localDate: string,
+  points: number,
+  actor: string,
+  reason?: string,
+): CurrentWeekHistoryResponse["activities"][number] {
+  return {
+    activity_id: activityId,
+    occurred_at: `${localDate}T08:00:00+00:00`,
+    local_date: localDate,
+    action: "points_adjusted",
+    child_id: "kid_1",
+    chore_id: null,
+    assignment_id: null,
+    points_delta: points,
+    actor_user_id: "parent_1",
+    actor_name: actor,
+    reason,
+  };
+}
+
 function apiHass(history: CurrentWeekHistoryResponse): {
   hass: HomeAssistant;
   send: ReturnType<typeof vi.fn>;
@@ -85,28 +107,14 @@ afterEach(() => document.body.replaceChildren());
 
 describe("Chores Manager history card", () => {
   it.each([false, true])(
-    "omits audit activity with completions=%s",
+    "includes dated point adjustments and actor with completions=%s",
     async (hasCompletions) => {
       const history = response(
         hasCompletions
           ? [completion("1", "2026-08-22", "Ge katten mat", "Katten", 1)]
           : [],
       );
-      history.activities = [
-        {
-          activity_id: "activity_1",
-          occurred_at: "2026-08-22T08:00:00+00:00",
-          local_date: "2026-08-22",
-          action: "points_adjusted",
-          child_id: "kid_1",
-          chore_id: null,
-          assignment_id: null,
-          points_delta: 6,
-          actor_user_id: "parent_1",
-          actor_name: "Parent",
-          reason: "Bonus",
-        },
-      ];
+      history.activities = [adjustment("1", "2026-08-22", 6, "Parent", "Bonus")];
       const { hass } = apiHass(history);
       const card = new ChoresManagerHistoryCard();
       card.hass = hass;
@@ -114,21 +122,66 @@ describe("Chores Manager history card", () => {
       document.body.append(card);
       await settle(card);
 
-      expect(card.shadowRoot?.querySelector(".activity")).toBeNull();
-      expect(card.shadowRoot?.textContent).not.toContain("Parent · Bonus");
-      if (hasCompletions) {
-        expect(card.shadowRoot?.querySelectorAll("section")).toHaveLength(1);
-        expect(card.shadowRoot?.textContent).toContain("Ge katten mat");
-        expect(card.shadowRoot?.querySelector(".total")?.textContent).toBe(
-          "Totalt: 1p",
-        );
-      } else {
-        expect(card.shadowRoot?.querySelector(".empty")?.textContent).toBe(
-          "Inga sysslor registrerade den här veckan.",
-        );
-      }
+      expect(card.shadowRoot?.querySelectorAll("section")).toHaveLength(1);
+      expect(card.shadowRoot?.querySelector(".empty")).toBeNull();
+      expect(card.shadowRoot?.querySelector(".activity")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+        "Poäng justerade · +6p · Parent · Bonus",
+      );
+      expect(card.shadowRoot?.querySelector("time")?.getAttribute("datetime")).toBe("2026-08-22");
+      expect(card.shadowRoot?.querySelector("time")?.textContent).toBe("22 aug.");
+      expect(card.shadowRoot?.querySelector(".total")?.textContent).toBe(
+        `Totalt: ${hasCompletions ? 7 : 6}p`,
+      );
+      expect(card.getCardSize()).toBe(3);
     },
   );
+
+  it("includes adjustment-only dates, negative deltas and no duplicate completion activity", async () => {
+    const history = response([completion("1", "2026-08-22", "Feed cat", "Cat", 1)]);
+    history.activities = [
+      adjustment("3", "2026-08-23", -2, "Sam"),
+      { ...adjustment("added", "2026-08-22", 1, "Alex"), action: "completion_added" },
+      adjustment("2", "2026-08-21", 1, "Pat"),
+      { ...adjustment("removed", "2026-08-24", -1, "Alex"), action: "completion_removed" },
+      { ...adjustment("1", "2026-08-21", 2, "Lee"), occurred_at: "2026-08-21T07:00:00+00:00" },
+    ];
+    const { hass } = apiHass(history);
+    const card = new ChoresManagerHistoryCard();
+    card.hass = hass;
+    card.setConfig({ child_id: "kid_1", locale: "en" });
+    document.body.append(card);
+    await settle(card);
+
+    const sections = [...(card.shadowRoot?.querySelectorAll("section") ?? [])];
+    expect(sections.map((section) => section.dataset.localDate)).toEqual([
+      "2026-08-21", "2026-08-22", "2026-08-23",
+    ]);
+    expect(sections.map((section) => section.querySelector(".total")?.textContent)).toEqual([
+      "Total: 3p", "Total: 1p", "Total: -2p",
+    ]);
+    expect(sections[0].querySelectorAll(".activity")[0].textContent).toContain("Lee");
+    expect(sections[2].querySelector(".activity")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Points adjusted · -2p · Sam",
+    );
+    expect(card.shadowRoot?.querySelectorAll("li")).toHaveLength(4);
+    expect(card.shadowRoot?.textContent).not.toContain("Completion added");
+    expect(card.shadowRoot?.textContent).not.toContain("Completion removed");
+    expect(sections[2].querySelector("time")?.textContent).toBe("Aug 23");
+  });
+
+  it("supports history responses without activities", async () => {
+    const history = response([completion("1", "2026-08-22", "Feed cat", "Cat", 1)]);
+    Reflect.deleteProperty(history, "activities");
+    const { hass } = apiHass(history);
+    const card = new ChoresManagerHistoryCard();
+    card.hass = hass;
+    card.setConfig({ child_id: "kid_1", locale: "en" });
+    document.body.append(card);
+    await settle(card);
+
+    expect(card.shadowRoot?.querySelectorAll("li")).toHaveLength(1);
+    expect(card.shadowRoot?.querySelector(".total")?.textContent).toBe("Total: 1p");
+  });
 
   it("renders a localized current-week history grouped by ascending date", async () => {
     const { hass, send } = apiHass(response([
@@ -154,18 +207,18 @@ describe("Chores Manager history card", () => {
       "2026-08-21",
       "2026-08-22",
     ]);
-    expect(sections[0].querySelector("h2")?.textContent).toBe("fredag");
+    expect(sections[0].querySelector("h2")?.textContent).toContain("fredag");
     expect(sections[0].querySelectorAll("li")[0].textContent?.replace(/\s+/g, " ").trim()).toBe(
       "Bädda sängen · 2p",
     );
     expect(sections[0].querySelector(".total")?.textContent).toBe("Totalt: 4p");
-    expect(sections[1].querySelector("h2")?.textContent).toBe("lördag");
+    expect(sections[1].querySelector("h2")?.textContent).toContain("lördag");
   });
 
   it("supports a borderless headerless popup layout and hiding points", async () => {
-    const { hass } = apiHass(response([
-      completion("1", "2026-08-22", "Ge katten mat", "Katten", 1),
-    ]));
+    const history = response([completion("1", "2026-08-22", "Ge katten mat", "Katten", 1)]);
+    history.activities = [adjustment("1", "2026-08-22", 1, "Parent", "Bonus")];
+    const { hass } = apiHass(history);
     const card = new ChoresManagerHistoryCard();
     card.hass = hass;
     card.setConfig({
@@ -181,6 +234,8 @@ describe("Chores Manager history card", () => {
     expect(card.shadowRoot?.querySelector("header")).toBeNull();
     expect(card.shadowRoot?.querySelector("li")?.textContent?.trim()).toBe("Ge katten mat");
     expect(card.shadowRoot?.querySelector(".total")).toBeNull();
+    expect(card.shadowRoot?.querySelector(".activity")?.textContent?.replace(/\s+/g, " ").trim()).toBe("Poäng justerade · Parent · Bonus");
+    expect(card.shadowRoot?.querySelector(".points")).toBeNull();
   });
 
   it("lets card YAML override the Person associated by the integration", async () => {

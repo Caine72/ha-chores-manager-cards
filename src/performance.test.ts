@@ -148,12 +148,12 @@ describe("card performance regressions", () => {
     const card = new ChoresManagerHistoryCard();
     const internals = card as unknown as {
       history?: CurrentWeekHistoryResponse;
-      groupedCompletions: () => Map<string, CurrentWeekHistoryResponse["completions"]>;
+      groupedDays: () => Map<string, unknown>;
     };
     internals.history = history;
 
-    const first = internals.groupedCompletions();
-    const second = internals.groupedCompletions();
+    const first = internals.groupedDays();
+    const second = internals.groupedDays();
 
     expect(second).toBe(first);
   });

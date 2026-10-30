@@ -28,7 +28,7 @@ not contain a real person's likeness or household data.
 
 - **Daily** — grouped chores with point values and immediate completion controls.
 - **Overview** — weekly progress, rewards, previous-week points, user-visible adjustments, and dashboard actions.
-- **History** — completed chores grouped by day within the current chore week.
+- **History** — completed chores and point adjustments grouped by date within the current chore week, including who adjusted the points and each day’s total.
 - **Correction** — administrator controls for adding or removing dated current-week completions.
 - **Quick Chore** — shared-chore status, child portrait shortcuts, manual household completion, and optional reset controls.
 
