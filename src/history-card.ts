@@ -11,7 +11,13 @@ import type {
   CurrentWeekHistoryResponse,
   HistoryCardConfig,
   HomeAssistant,
+  PointActivity,
 } from "./types";
+
+interface HistoryDay {
+  completions: CompletionSnapshot[];
+  adjustments: PointActivity[];
+}
 
 @customElement(HISTORY_CARD_TYPE)
 export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
@@ -19,7 +25,7 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
   @state() private history?: CurrentWeekHistoryResponse;
   @state() private loadFailed = false;
   private groupedHistory?: CurrentWeekHistoryResponse;
-  private groupedHistoryCache = new Map<string, CompletionSnapshot[]>();
+  private groupedHistoryCache = new Map<string, HistoryDay>();
   private requestChildId?: string;
   private requestConnection?: HomeAssistant["connection"];
   private requestUpdateKey?: string;
@@ -60,7 +66,7 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
   }
 
   getCardSize(): number {
-    return Math.max(2, 1 + this.groupedCompletions().size * 2);
+    return Math.max(2, 1 + this.groupedDays().size * 2);
   }
 
   protected hassUpdateKey(hass: HomeAssistant): readonly unknown[] | undefined {
@@ -118,25 +124,26 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
   }
 
   private renderHistory() {
-    const groups = this.groupedCompletions();
+    const groups = this.groupedDays();
     if (!groups.size) {
       return html`<p class="empty">${localize("history_empty", this.config?.locale, this.hass)}</p>`;
     }
     return html`
       <div class="history">
-        ${[...groups.entries()].map(([localDate, completions]) =>
-          this.renderDay(localDate, completions),
+        ${[...groups.entries()].map(([localDate, day]) =>
+          this.renderDay(localDate, day),
         )}
 
       </div>
     `;
   }
 
-  private renderDay(localDate: string, completions: CompletionSnapshot[]) {
-    const total = completions.reduce((sum, completion) => sum + completion.points, 0);
+  private renderDay(localDate: string, { completions, adjustments }: HistoryDay) {
+    const total = completions.reduce((sum, completion) => sum + completion.points, 0) +
+      adjustments.reduce((sum, activity) => sum + activity.points_delta, 0);
     return html`
       <section data-local-date=${localDate}>
-        <h2>${this.weekday(localDate)}</h2>
+        <h2>${this.weekday(localDate)} <time datetime=${localDate}>${this.calendarDate(localDate)}</time></h2>
         <ul>
           ${completions.map(
             (completion) => html`
@@ -148,6 +155,15 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
               </li>
             `,
           )}
+          ${adjustments.map((activity) => html`
+            <li class="activity">
+              <span>${localize("activity_points_adjusted", this.config?.locale, this.hass)}</span>
+              ${this.config?.show_points !== false
+                ? html`<span class="points"> · ${activity.points_delta >= 0 ? "+" : ""}${activity.points_delta}p</span>`
+                : nothing}
+              <span> · ${activity.actor_name}${activity.reason ? ` · ${activity.reason}` : ""}</span>
+            </li>
+          `)}
         </ul>
         ${this.config?.show_points !== false
           ? html`<strong class="total">${localize("total", this.config?.locale, this.hass)}: ${total}p</strong>`
@@ -156,22 +172,37 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
     `;
   }
 
-  private groupedCompletions(): Map<string, CompletionSnapshot[]> {
+  private groupedDays(): Map<string, HistoryDay> {
     if (this.groupedHistory === this.history) {
       return this.groupedHistoryCache;
     }
-    const groups = new Map<string, CompletionSnapshot[]>();
+    const groups = new Map<string, HistoryDay>();
+    const dayFor = (localDate: string): HistoryDay => {
+      let day = groups.get(localDate);
+      if (!day) {
+        day = { completions: [], adjustments: [] };
+        groups.set(localDate, day);
+      }
+      return day;
+    };
     for (const completion of this.history?.completions ?? []) {
-      const entries = groups.get(completion.local_date) ?? [];
-      entries.push(completion);
-      groups.set(completion.local_date, entries);
+      dayFor(completion.local_date).completions.push(completion);
     }
-    for (const entries of groups.values()) {
-      entries.sort(
+    for (const activity of this.history?.activities ?? []) {
+      if (activity.action === "points_adjusted") {
+        dayFor(activity.local_date).adjustments.push(activity);
+      }
+    }
+    for (const { completions, adjustments } of groups.values()) {
+      completions.sort(
         (left, right) =>
           left.category.localeCompare(right.category) ||
           left.chore_title.localeCompare(right.chore_title) ||
           left.completion_id.localeCompare(right.completion_id),
+      );
+      adjustments.sort(
+        (left, right) => left.occurred_at.localeCompare(right.occurred_at) ||
+          left.activity_id.localeCompare(right.activity_id),
       );
     }
     this.groupedHistory = this.history;
@@ -179,6 +210,14 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
       [...groups.entries()].sort(([left], [right]) => left.localeCompare(right)),
     );
     return this.groupedHistoryCache;
+  }
+
+  private calendarDate(localDate: string): string {
+    const locale = resolveLocale(this.config?.locale, this.hass);
+    return new Intl.DateTimeFormat(locale === "sv" ? "sv-SE" : "en-US", {
+      day: "numeric",
+      month: "short",
+    }).format(new Date(`${localDate}T12:00:00`));
   }
 
   private weekday(localDate: string): string {
@@ -247,6 +286,7 @@ export class ChoresManagerHistoryCard extends ChoresManagerBaseCard {
     .portrait-icon { --mdc-icon-size: 48px; color: var(--state-icon-color); }
     .history { display: grid; gap: 24px; }
     h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; text-transform: capitalize; }
+    h2 time { color: var(--secondary-text-color); font-size: 13px; font-weight: 400; margin-left: 6px; text-transform: none; }
     ul { padding-left: 24px; }
     li { line-height: 1.45; margin-bottom: 7px; padding-left: 2px; }
     .points { white-space: nowrap; }
