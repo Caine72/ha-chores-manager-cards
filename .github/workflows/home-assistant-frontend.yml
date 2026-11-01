@@ -2,7 +2,7 @@ name: Home Assistant frontend compatibility
 
 on:
   schedule:
-    - cron: "41 4 * * 1"
+    - cron: "41 4 * * 4"
   workflow_dispatch:
 
 permissions:
